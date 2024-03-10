@@ -3,23 +3,36 @@
 module Main where
 import Web.Scotty (scotty, get, html)
 import qualified Data.Text.Lazy as TL
-import Data.List (elemIndex, intercalate)
+import Data.List (elemIndex)
 import Debug.Trace (trace)
-
-
-class DisplayData a where
-    display :: a -> String
+import Templates
+import Control.Monad.IO.Class (MonadIO(liftIO))
+import Text.Mustache (ToMustache (toMustache), object, (~>))
 
 type Ranking = Int
-type PlayerName = String
+type GolferName = String
 
-data Player = Player
+data Golfer = Golfer
     { ranking :: Ranking
-    , name :: PlayerName
+    , name :: GolferName
     }
 
-instance Show Player where
-    show p = show (ranking p) ++ " - " ++ name p
+instance ToMustache Golfer where
+    toMustache (Golfer { ranking = ranking, name = name }) =
+        object 
+            [ "ranking" ~> ranking
+            , "name" ~> name
+            ]
+
+data GolferData = GolferData 
+    { golfers :: [Golfer]
+    }
+
+instance ToMustache GolferData where
+    toMustache (GolferData { golfers = golfers }) =
+        object 
+            [ "golfers" ~> golfers ]
+
 
 wordsSeperated :: Char -> String -> [String]
 wordsSeperated _ [] = []
@@ -33,12 +46,10 @@ cleanString (h:t) = if h == '"' then cleanString t else h : cleanString t
 
 seperateAndClean :: Char -> String -> [String]
 seperateAndClean c s = 
-    let
-        sep = wordsSeperated c s
-    in
-        map cleanString sep
+    let sep = wordsSeperated c s
+    in map cleanString sep
 
-getPlayers :: IO [Player]
+getPlayers :: IO [Golfer]
 getPlayers = do
     f <- readFile "downloaded_rankings.csv"
     let ls = lines f
@@ -51,19 +62,16 @@ getPlayers = do
         ps = map (\e -> 
             let s = seperateAndClean ',' e in
                 trace (show "rank:" ++ s!!rankingIndex)
-                Player (read (s!!rankingIndex) :: Int) (s!!nameIndex) 
+                Golfer (read (s!!rankingIndex) :: Int) (s!!nameIndex) 
             ) (tail ls)
     return ps
 
 main :: IO ()
 main = do
     players <- getPlayers
-    print players
-    let displayPlayer = map show players
     scotty 3000 $ do
         get "/" $ do
-            html $ TL.pack (intercalate "\n" displayPlayer)
+            t <- liftIO $ buildIndex $ GolferData players
+            liftIO $ print ("index: " ++ show t)
+            html $ TL.fromStrict t --TL.pack (intercalate " - " displayPlayer)
 
-
-api :: String
-api = "Hello, Haskell!"
