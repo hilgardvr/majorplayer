@@ -7,32 +7,7 @@ import Data.List (elemIndex)
 import Debug.Trace (trace)
 import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Text.Mustache (ToMustache (toMustache), object, (~>))
-
-type Ranking = Int
-type GolferName = String
-
-data Golfer = Golfer
-    { ranking :: Ranking
-    , name :: GolferName
-    }
-
-instance ToMustache Golfer where
-    toMustache (Golfer { ranking = ranking, name = name }) =
-        object 
-            [ "ranking" ~> ranking
-            , "name" ~> name
-            ]
-
-data GolferData = GolferData 
-    { golfers :: [Golfer]
-    }
-
-instance ToMustache GolferData where
-    toMustache (GolferData { golfers = golfers }) =
-        object 
-            [ "golfers" ~> golfers ]
-
+import Golfer (Golfer (..), Ranking, GolferData (..))
 
 wordsSeperated :: Char -> String -> [String]
 wordsSeperated _ [] = []
@@ -49,6 +24,8 @@ seperateAndClean c s =
     let sep = wordsSeperated c s
     in map cleanString sep
 
+
+
 getPlayers :: IO [Golfer]
 getPlayers = do
     f <- readFile "downloaded_rankings.csv"
@@ -62,7 +39,7 @@ getPlayers = do
         ps = map (\e -> 
             let s = seperateAndClean ',' e in
                 trace (show "rank:" ++ s!!rankingIndex)
-                Golfer (read (s!!rankingIndex) :: Int) (s!!nameIndex) 
+                Golfer (read (s!!rankingIndex) :: Ranking) (s!!nameIndex) 
             ) (tail ls)
     return ps
 
@@ -73,5 +50,5 @@ main = do
         get "/" $ do
             t <- liftIO $ buildIndex $ GolferData players
             liftIO $ print ("index: " ++ show t)
-            html $ TL.fromStrict t --TL.pack (intercalate " - " displayPlayer)
+            html $ TL.fromStrict t
 
