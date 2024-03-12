@@ -3,7 +3,12 @@
         <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
     </head>
     <body>
-        <h1>Major Player</h1> 
-        {{> home.mustache }}
+        <h2>MajorPlayer</h2> 
+        {{^player}}
+            {{> login.mustache }}
+        {{/player}}
+        {{#player}}
+            {{> home.mustache }}
+        {{/player}}
     </body>
 </html>
