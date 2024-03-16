@@ -1,9 +1,28 @@
-<p>
-    <h4>Logged in as {{player.email}}</h4>
-    <h3>Golfers</h3>
+<div id="home">
+    <h4>Logged in as {{player.user.email}}</h4>
+    <h3>Selected golfers</h3>
+    <h4>{{player}}</h4>
+    {{#player.selected}}
+        <div>
+            <button
+                hx-put="/deselect/{{id}}"
+                hx-swap="outerHTML"
+                hx-target="#home"
+                >
+                {{ranking}} - {{name}}
+            </button>
+        </div>
+    {{/player.selected}}
+    <h3>Pick your golfers</h3>
     {{#golfers}}
         <div>
-            <b>{{ranking}} - {{name}}</b>
+            <button
+                hx-put="/select/{{id}}"
+                hx-swap="outerHTML"
+                hx-target="#home"
+                >
+                {{ranking}} - {{name}}
+            </button>
         </div>
     {{/golfers}}
-</p>
+</div>

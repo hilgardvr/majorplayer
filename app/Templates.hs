@@ -1,11 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Templates where
+module Templates
+( index
+, home
+, buildTemplate
+, UserTemplate(..)
+) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
 import Data.Text (Text)
 import Text.Mustache.Compile (TemplateCache, cacheFromList)
-import Player (Player(..))
-import Golfer (Golfer (name, ranking, Golfer))
+import Player (Player)
+import Golfer (Golfer)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -13,29 +18,23 @@ searchSpace = ["./app/templates"]
 index :: FilePath
 index = "index.mustache"
 
-data User = User
+home :: FilePath
+home = "home.mustache"
+
+
+data UserTemplate = UserTemplate
     { player :: Maybe Player
     , golfers :: [Golfer]
     }
 
-instance ToMustache User where
-    toMustache (User Nothing g) = object 
+
+instance ToMustache UserTemplate where
+    toMustache (UserTemplate Nothing g) = object
         [ "golfers" ~> g ]
-    toMustache (User (Just p) g) = object
+    toMustache (UserTemplate (Just p) g) = object
         [ "golfers" ~> g
         , "player" ~> p
         ]
-
-instance ToMustache Player where
-    toMustache (Player e) = object 
-        [ "email" ~> e ]
-
-instance ToMustache Golfer where
-    toMustache (Golfer { ranking = ranking, name = name }) =
-        object 
-            [ "ranking" ~> ranking
-            , "name" ~> name
-            ]
 
 compiledTemplates :: IO TemplateCache
 compiledTemplates = do
@@ -57,8 +56,7 @@ templateOrError tmpl = do
             error $ "Error getting compile with cache:" ++ show err
         Right t' -> return t'
 
-
-buildHome :: (ToMustache a) => a -> IO Text
-buildHome d = do
-    compiled <- templateOrError index
+buildTemplate :: (ToMustache a) => FilePath -> a -> IO Text
+buildTemplate f d = do
+    compiled <- templateOrError f
     return $ substitute compiled d
