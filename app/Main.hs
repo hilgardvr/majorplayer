@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
-import Web.Scotty (scotty, get, html, ActionM, post, request, body, param, formParam, capture, captureParam, put, ScottyM)
+import Web.Scotty (scotty, get, html, ActionM, post, request, body, param, formParam, capture, captureParam, put, ScottyM, redirect, headers, header)
 import qualified Data.Text.Lazy as TL
 import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -10,12 +10,14 @@ import Player (Player(..))
 import Golfer (getGolfers, GolferId, Golfer(id, name))
 import Data.Foldable (find)
 import Repo (connect)
-import User (User(User, id), createUser)
+import User (User(User, id), createUser, getUserByEmail, getUserById)
 import Data.UUID as U
-import Session (createSession, Session (sessionId))
+import Session (createSession, Session (sessionId, userId), getSessionById)
 import Data.Time (getCurrentTime, utcToLocalTime, utc)
 import qualified Data.UUID as UUID
-import Data.Text (pack)
+import Data.Text (pack, Text)
+import Text.Mustache (Template(Template))
+import qualified Data.Text as T
 
 
 genTempUUID :: IO U.UUID 
@@ -25,20 +27,41 @@ genTempUUID = do
             Just u -> u
     return tmp
 
+cookieKey :: Text
+cookieKey = "majorplayer"
+
 main :: IO ()
 main = do
     players <- getGolfers
     conn <- connect "localhost" 5432 "postgres" "password"
     scotty 3000 $ do
         get "/" $ do
-            c <- getCookie "majorplayer"
-            liftIO $ print c
-            t <- liftIO $ buildTemplate index $ UserTemplate Nothing players
-            html $ TL.fromStrict t
+            c <- getCookie cookieKey
+            c' <- case c of 
+                    Nothing -> redirect "/"
+                    Just c' -> pure c'
+            liftIO $ print $ "found home cookie"
+            sessId <- case UUID.fromString $ T.unpack c' of
+                    Nothing -> error "Cant get sessionId from cookie"
+                    Just s -> return s
+            sess <- liftIO $ getSessionById conn sessId
+            s' <- case sess of 
+                    Nothing -> redirect "/"
+                    Just s' -> pure s'
+            user <- liftIO $ getUserById conn (userId s')
+            case user of 
+                Nothing -> redirect "/"
+                Just _ -> redirect "/home"
         post "/login" $ do
             email <- formParam "email" :: ActionM String
             liftIO $ print $ "param: " ++ email
-            user <- liftIO $ createUser conn email
+            r <- request
+            liftIO $ print $ "request: " ++ show r
+            existingUser <- liftIO $ getUserByEmail conn email
+            liftIO $ print $ "existingUser : " ++ show existingUser
+            user <- case existingUser of 
+                    Nothing -> liftIO $ createUser conn email
+                    Just u -> return u
             let userId = case User.id user of
                     Nothing -> error "Expecting a userID"
                     Just id' -> id'
@@ -49,9 +72,32 @@ main = do
                     Just sid -> sid
             let c = makeSimpleCookie "majorplayer" (pack $ UUID.toString sessId)
             setCookie c
-            liftIO $ print sess
-            let player = Player user []
-            t <- liftIO $ buildTemplate index $ UserTemplate (Just player) players
+            redirect "/home"
+        get "/home" $ do 
+            r <- request
+            liftIO $ print r
+            host <- header "Host"
+            liftIO $ case host of
+                Nothing -> print "host not found"
+                Just h ->  print $ "host: " ++ show h
+            c <- getCookie cookieKey
+            c' <- case c of 
+                    Nothing -> redirect "/"
+                    Just c' -> pure c'
+            liftIO $ print $ "found home cookie"
+            sessId <- case UUID.fromString $ T.unpack c' of
+                    Nothing -> error "Cant get sessionId from cookie"
+                    Just s -> return s
+            sess <- liftIO $ getSessionById conn sessId
+            s' <- case sess of 
+                    Nothing -> redirect "/"
+                    Just s' -> pure s'
+            user <- liftIO $ getUserById conn (userId s')
+            u <- case user of 
+                    Nothing -> redirect "/"
+                    Just u -> pure u
+            let player = Player u []
+            t <- liftIO $ buildIndex $ UserTemplate (Just player) players
             html $ TL.fromStrict t
         put (capture "/select/:golferId") $ do
             gid <- captureParam "golferId"
@@ -68,7 +114,7 @@ main = do
                 user = User (Just tmp) "todo email"
                 player = Player user sel
             liftIO $ print ("selected :" ++ (name $ head sel))
-            t <- liftIO $ buildTemplate home $ UserTemplate (Just player) filteredGolfers
+            t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
             html $ TL.fromStrict t
         put (capture "/deselect/:golferId") $ do
             gid <- captureParam "golferId"
@@ -85,7 +131,7 @@ main = do
                 user = User (Just tmp) "todo email deselect" 
                 player = Player user sel 
             liftIO $ print ("selected :" ++ (name $ head sel))
-            t <- liftIO $ buildTemplate home $ UserTemplate (Just player) filteredGolfers
+            t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
             html $ TL.fromStrict t
 
 

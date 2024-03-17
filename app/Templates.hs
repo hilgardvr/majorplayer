@@ -3,7 +3,8 @@
 module Templates
 ( index
 , home
-, buildTemplate
+, buildIndex
+, buildHome
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -60,3 +61,9 @@ buildTemplate :: (ToMustache a) => FilePath -> a -> IO Text
 buildTemplate f d = do
     compiled <- templateOrError f
     return $ substitute compiled d
+
+buildIndex :: UserTemplate -> IO Text
+buildIndex = buildTemplate index
+
+buildHome :: UserTemplate -> IO Text
+buildHome = buildTemplate home
