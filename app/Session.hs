@@ -6,12 +6,13 @@ module Session
 ) where
 import Data.UUID
 import Data.Time (LocalTime)
-import Database.PostgreSQL.Simple (Connection, ToRow, FromRow, returning, query)
+import Database.PostgreSQL.Simple (ToRow, FromRow, returning, query)
 import User (UserId)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
+import Env (Env (conn, logger), LogLevel (DEBUG))
 
 type SessionId = UUID
 
@@ -26,25 +27,25 @@ instance ToRow Session where
     toRow (Session i u s e) = 
         case i of 
             Nothing -> [toField u, toField e]
-            Just id' -> toRow (id', u,  s, e)
+            Just id' -> toRow (id', u, s, e)
 
 instance FromRow Session where
     fromRow = Session <$> field <*> field <*> field <*> field
 
-createSession :: Connection -> UserId -> LocalTime -> IO Session
-createSession conn userId expiry = do
-    let s = Session Nothing userId Nothing (Just expiry)
-    print $ "Createing session for userId: " ++ show userId
-    sess <- returning conn (getQuery "insert into sessions(user_id, expiry) values (?,?) returning *") [s]
-    print $ "Created session: " ++ show sess
+createSession :: Env -> UserId -> IO Session
+createSession env userId = do
+    let s = Session Nothing userId Nothing Nothing 
+    logger env DEBUG $ "Createing session for userId: " ++ show userId
+    sess <- returning (conn env) (getQuery "insert into sessions(user_id, expiry) values (?,?) returning *") [s]
+    logger env DEBUG $ "Created session: " ++ show sess
     return $ head sess
 
 
-getSessionById :: Connection -> SessionId -> IO (Maybe Session)
-getSessionById conn sessId = do
-    print $ "getting user for session: " ++ show sessId
-    sess <- query conn (getQuery "select * from sessions where session_id = (?)") [sessId] 
-    print $ "sess result for sessId: " ++ show sess
+getSessionById :: Env -> SessionId -> IO (Maybe Session)
+getSessionById env sessId = do
+    logger env DEBUG $ "getting user for session: " ++ show sessId
+    sess <- query (conn env) (getQuery "select * from sessions where session_id = (?)") [sessId] 
+    logger env DEBUG $ "sess result for sessId: " ++ show sess
     if Prelude.null sess
     then return Nothing
     else return $ Just $ head sess

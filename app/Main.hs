@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
-import Web.Scotty (scotty, get, html, ActionM, post, request, body, param, formParam, capture, captureParam, put, ScottyM, redirect, headers, header)
+import Web.Scotty (scotty, get, html, ActionM, post, request, formParam, capture, captureParam, put, redirect, header)
 import qualified Data.Text.Lazy as TL
 import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -10,63 +10,62 @@ import Player (Player(..))
 import Golfer (getGolfers, GolferId, Golfer(id, name))
 import Data.Foldable (find)
 import Repo (connect)
-import User (User(User, id), createUser, getUserByEmail, getUserById)
-import Data.UUID as U
+import User (User(id), createUser, getUserByEmail, getUserById)
 import Session (createSession, Session (sessionId, userId), getSessionById)
-import Data.Time (getCurrentTime, utcToLocalTime, utc)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
-import Text.Mustache (Template(Template))
 import qualified Data.Text as T
-
-
-genTempUUID :: IO U.UUID 
-genTempUUID = do
-    let tmp = case U.fromString "f79d74c3-c24f-488f-b515-0903649a92c5" of
-            Nothing -> error "Could not generate uuid"
-            Just u -> u
-    return tmp
+import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
 
 cookieKey :: Text
 cookieKey = "majorplayer"
 
-main :: IO ()
-main = do
+
+getUserForSession :: Env -> Maybe Text -> IO (Maybe User)
+getUserForSession env cookie = do
+    case cookie of
+        Nothing -> return Nothing
+        Just c' -> do
+            logger env DEBUG "found home cookie"
+            sessId <- case UUID.fromString $ T.unpack c' of
+                    Nothing -> do
+                        let err = "Cant get sessionId from cookie: " ++ show c'
+                        logger env ERROR  err
+                        error  err
+                    Just s -> return s
+            sess <- getSessionById env sessId
+            case sess of 
+                Nothing -> return Nothing 
+                Just s' -> getUserById env (userId s')
+    
+app :: Env -> IO ()
+app env = do
     players <- getGolfers
-    conn <- connect "localhost" 5432 "postgres" "password"
     scotty 3000 $ do
         get "/" $ do
             c <- getCookie cookieKey
-            c' <- case c of 
-                    Nothing -> redirect "/"
-                    Just c' -> pure c'
-            liftIO $ print $ "found home cookie"
-            sessId <- case UUID.fromString $ T.unpack c' of
-                    Nothing -> error "Cant get sessionId from cookie"
-                    Just s -> return s
-            sess <- liftIO $ getSessionById conn sessId
-            s' <- case sess of 
-                    Nothing -> redirect "/"
-                    Just s' -> pure s'
-            user <- liftIO $ getUserById conn (userId s')
+            user <- liftIO $ getUserForSession env c
             case user of 
-                Nothing -> redirect "/"
+                Nothing -> do
+                    t <- liftIO $ buildIndex $ UserTemplate Nothing players
+                    html $ TL.fromStrict t
                 Just _ -> redirect "/home"
         post "/login" $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
             email <- formParam "email" :: ActionM String
-            liftIO $ print $ "param: " ++ email
+            liftIO $ logger env DEBUG $ "param: " ++ email
             r <- request
             liftIO $ print $ "request: " ++ show r
-            existingUser <- liftIO $ getUserByEmail conn email
-            liftIO $ print $ "existingUser : " ++ show existingUser
+            existingUser <- liftIO $ getUserByEmail env email
+            liftIO $ logger env DEBUG $ "existingUser : " ++ show existingUser
             user <- case existingUser of 
-                    Nothing -> liftIO $ createUser conn email
+                    Nothing -> liftIO $ createUser env email
                     Just u -> return u
             let userId = case User.id user of
                     Nothing -> error "Expecting a userID"
                     Just id' -> id'
-            time <- liftIO getCurrentTime
-            sess <- liftIO $ createSession conn userId (utcToLocalTime utc time)
+            sess <- liftIO $ createSession env userId 
             let sessId = case sessionId sess of
                     Nothing -> error "Expecting a sessionID"
                     Just sid -> sid
@@ -75,24 +74,24 @@ main = do
             redirect "/home"
         get "/home" $ do 
             r <- request
-            liftIO $ print r
+            liftIO $ logger env DEBUG $ show r
             host <- header "Host"
             liftIO $ case host of
-                Nothing -> print "host not found"
-                Just h ->  print $ "host: " ++ show h
+                Nothing -> logger env DEBUG "host not found"
+                Just h ->  logger env DEBUG $ "host: " ++ show h
             c <- getCookie cookieKey
             c' <- case c of 
                     Nothing -> redirect "/"
                     Just c' -> pure c'
-            liftIO $ print $ "found home cookie"
+            liftIO $ logger env DEBUG $ "found home cookie"
             sessId <- case UUID.fromString $ T.unpack c' of
                     Nothing -> error "Cant get sessionId from cookie"
                     Just s -> return s
-            sess <- liftIO $ getSessionById conn sessId
+            sess <- liftIO $ getSessionById env sessId
             s' <- case sess of 
                     Nothing -> redirect "/"
                     Just s' -> pure s'
-            user <- liftIO $ getUserById conn (userId s')
+            user <- liftIO $ getUserById env (userId s')
             u <- case user of 
                     Nothing -> redirect "/"
                     Just u -> pure u
@@ -100,40 +99,54 @@ main = do
             t <- liftIO $ buildIndex $ UserTemplate (Just player) players
             html $ TL.fromStrict t
         put (capture "/select/:golferId") $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
             gid <- captureParam "golferId"
-            liftIO $ print $ "found golferId: " ++ gid
+            liftIO $ logger env DEBUG $ "found golferId: " ++ gid
             c <- getCookie "majorplayer"
-            liftIO $ print c
-            tmp <- liftIO genTempUUID
-            let readGolferId = read gid :: GolferId
-                filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
-                selected = find (\e -> Golfer.id e == readGolferId) players
-                sel = case selected of
-                    Nothing -> []
-                    Just s -> [s]
-                user = User (Just tmp) "todo email"
-                player = Player user sel
-            liftIO $ print ("selected :" ++ (name $ head sel))
-            t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
-            html $ TL.fromStrict t
+            user <- liftIO $ getUserForSession env c
+            case user of 
+                Nothing -> do
+                    liftIO $ logger env WARN $ "Could not find user to select golfer. Session: " ++ show c
+                    redirect "/"
+                Just u -> do
+                    let readGolferId = read gid :: GolferId
+                        filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
+                        selected = find (\e -> Golfer.id e == readGolferId) players
+                        sel = case selected of
+                            Nothing -> []
+                            Just s -> [s]
+                        player = Player u sel
+                    liftIO $ logger env DEBUG $ ("selected :" ++ (name $ head sel))
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
+                    html $ TL.fromStrict t
         put (capture "/deselect/:golferId") $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
             gid <- captureParam "golferId"
-            liftIO $ print $ "found golferId: " ++ gid
+            liftIO $ logger env DEBUG $ "found golferId for deselect: " ++ gid
             c <- getCookie "majorplayer"
-            liftIO $ print c
-            tmp <- liftIO genTempUUID
-            let readGolferId = read gid :: GolferId
-                filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
-                selected = find (\e -> Golfer.id e == readGolferId) players
-                sel = case selected of
-                    Nothing -> []
-                    Just s -> [s]
-                user = User (Just tmp) "todo email deselect" 
-                player = Player user sel 
-            liftIO $ print ("selected :" ++ (name $ head sel))
-            t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
-            html $ TL.fromStrict t
+            user <- liftIO $ getUserForSession env c
+            case user of
+                Nothing -> do
+                    liftIO $ logger env WARN $ "Could not find user to deselect golfer. Session: " ++ show c
+                    redirect "/"
+                Just user' -> do
+                    let readGolferId = read gid :: GolferId
+                        filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
+                        selected = find (\e -> Golfer.id e == readGolferId) players
+                        sel = case selected of
+                            Nothing -> []
+                            Just s -> [s]
+                        player = Player user' sel 
+                    liftIO $ logger env DEBUG ("selected :" ++ (name $ head sel))
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
+                    html $ TL.fromStrict t
 
 
-
+main :: IO ()
+main = do
+    conn <- connect "localhost" 5432 "postgres" "password"
+    let env = getEnv conn
+    app env
 
