@@ -16,6 +16,9 @@ import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
 import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
+import Team (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId, DraftTeam))
+import Data.List (partition)
+import qualified Team as DraftTeam
 
 cookieKey :: Text
 cookieKey = "majorplayer"
@@ -105,20 +108,19 @@ app env = do
             liftIO $ logger env DEBUG $ "found golferId: " ++ gid
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
+            let readGolferId = read gid :: GolferId
             case user of 
                 Nothing -> do
                     liftIO $ logger env WARN $ "Could not find user to select golfer. Session: " ++ show c
                     redirect "/"
                 Just u -> do
-                    let readGolferId = read gid :: GolferId
-                        filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
-                        selected = find (\e -> Golfer.id e == readGolferId) players
-                        sel = case selected of
-                            Nothing -> []
-                            Just s -> [s]
-                        player = Player u sel
-                    liftIO $ logger env DEBUG $ ("selected :" ++ (name $ head sel))
-                    t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
+                    _ <- liftIO $ addDraftPlayer env readGolferId (User.id u) 
+                    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
+                    let draftTeamGolferIds = map DraftTeam.golferId draftTeam
+                        (selected, notSelected) = partition (\e -> elem (Golfer.id e) draftTeamGolferIds)  players
+                        player = Player u selected
+                    liftIO $ logger env DEBUG $ "selected :" ++ show (map name selected)
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected
                     html $ TL.fromStrict t
         put (capture "/deselect/:golferId") $ do
             r <- request
@@ -127,20 +129,19 @@ app env = do
             liftIO $ logger env DEBUG $ "found golferId for deselect: " ++ gid
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
+            let readGolferId = read gid :: GolferId
             case user of
                 Nothing -> do
                     liftIO $ logger env WARN $ "Could not find user to deselect golfer. Session: " ++ show c
                     redirect "/"
-                Just user' -> do
-                    let readGolferId = read gid :: GolferId
-                        filteredGolfers = filter (\e -> Golfer.id e /= readGolferId) players
-                        selected = find (\e -> Golfer.id e == readGolferId) players
-                        sel = case selected of
-                            Nothing -> []
-                            Just s -> [s]
-                        player = Player user' sel 
-                    liftIO $ logger env DEBUG ("selected :" ++ (name $ head sel))
-                    t <- liftIO $ buildHome $ UserTemplate (Just player) filteredGolfers
+                Just u -> do
+                    _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u) 
+                    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
+                    let draftTeamGolferIds = map DraftTeam.golferId draftTeam
+                        (selected, notSelected) = partition (\e -> elem (Golfer.id e) draftTeamGolferIds)  players
+                        player = Player u selected
+                    liftIO $ logger env DEBUG ("selected :" ++ show (map name selected))
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected
                     html $ TL.fromStrict t
 
 

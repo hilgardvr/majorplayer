@@ -69,6 +69,7 @@ executable majorplayer
         , User
         , Session
         , Env
+        , Team
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
