@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module DraftTeam 
 ( DraftTeam(..)
 , addDraftPlayer
@@ -13,13 +15,15 @@ import Golfer (GolferId)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.FromRow (field, FromRow (fromRow))
+import Validation (Validatable (validate))
+import qualified Data.Set as Set
 
 
 data DraftTeam = DraftTeam 
     { id :: !(Maybe UUID)
     , userId :: !UUID
     , golferId :: !Int
-    } deriving (Show)
+    } deriving (Show, Eq, Ord)
 
 instance ToRow DraftTeam where
     toRow (DraftTeam i u g) = case i of
@@ -29,6 +33,14 @@ instance ToRow DraftTeam where
 instance FromRow DraftTeam where
     fromRow = DraftTeam <$> field <*> field <*> field
 
+instance Validatable [DraftTeam] where
+    validate dt = 
+        let uniq = Set.fromList dt
+        in 
+            if length uniq == 8
+            then Nothing
+            else Just "Unique draft team does not have a length of 8"
+ 
 addDraftPlayer :: Env -> Int -> Maybe UserId -> IO ()
 addDraftPlayer env golferId userId = do
     case userId of 

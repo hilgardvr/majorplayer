@@ -1,16 +1,18 @@
 <div id="home">
-    <h4>Logged in as {{player.user.email}}</h4>
-    <h3>Selected golfers</h3>
-    <h4>{{player}}</h4>
     <div>
         {{^validationError}}
-            <button hx-post="/save-team">Save Team</button>
+            <button 
+                hx-post="/save-team"
+                hx-swap="outerHTML"
+                hx-target="#home"
+            >Save Team</button>
         {{/validationError}}
         {{#validationError}}
             <h4>{{.}}</h4>
         {{/validationError}}
     </div>
 
+    <h3>Selected golfers</h3>
     {{#player.selected}}
         <div>
             <button

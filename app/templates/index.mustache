@@ -8,6 +8,8 @@
             {{> login.mustache }}
         {{/player}}
         {{#player}}
+            <h4>Logged in as {{player.user.email}}</h4>
+            <h4>{{player}}</h4>
             {{> home.mustache }}
         {{/player}}
     </body>

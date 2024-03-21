@@ -5,6 +5,7 @@ module Templates
 , home
 , buildIndex
 , buildHome
+, buildTeamPage
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -23,13 +24,14 @@ index = "index.mustache"
 home :: FilePath
 home = "home.mustache"
 
+team :: FilePath
+team = "team.mustache"
 
 data UserTemplate = UserTemplate
-    { player :: Maybe Player
-    , golfers :: [Golfer]
-    , validationError :: ValidationError
+    { player :: !(Maybe Player)
+    , golfers :: ![Golfer]
+    , validationError :: !ValidationError
     }
-
 
 instance ToMustache UserTemplate where
     toMustache (UserTemplate Nothing g v) = object
@@ -71,3 +73,6 @@ buildIndex = buildTemplate index
 
 buildHome :: UserTemplate -> IO Text
 buildHome = buildTemplate home
+
+buildTeamPage :: Player -> IO Text
+buildTeamPage = buildTemplate team 

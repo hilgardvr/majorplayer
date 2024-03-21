@@ -10,18 +10,25 @@ import Player (Player(..))
 import Golfer (getGolfers, GolferId, Golfer(id, name))
 import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
-import Session (createSession, Session (userId, Session, id), getSessionById)
+import Session (createSession, Session (userId, id), getSessionById)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
 import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition)
-import Control.Monad (liftM)
 import Validation (Validatable(validate))
+import Team (addTeam, getTeam, Team (golferIds))
+import qualified DraftTeam as Team
 
 cookieKey :: Text
 cookieKey = "majorplayer"
+
+mapMaybe :: (a -> Maybe b) -> Maybe a -> Maybe b
+mapMaybe f a =
+    case a of 
+        Nothing -> Nothing 
+        Just a' -> f a'
 
 getUserForSession :: Env -> Maybe Text -> IO (Maybe User)
 getUserForSession env cookie = do
@@ -46,8 +53,7 @@ getDraftTeamGolfers env g u = do
     let draftTeamIds = map (DraftTeam.golferId) draftTeam
         (selected, notSelected) = partition (\e -> Golfer.id e `elem` draftTeamIds) g
     return (selected, notSelected)
-        
-    
+
 app :: Env -> IO ()
 app env = do
     allGolfers <- getGolfers
@@ -152,6 +158,40 @@ app env = do
                     liftIO $ logger env DEBUG ("selected :" ++ show (map name selected))
                     t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected validation
                     html $ TL.fromStrict t
+        post "/save-team" $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
+            c <- getCookie "majorplayer"
+            user <- liftIO $ getUserForSession env c
+            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user) 
+            case validate draftTeam of
+                Nothing -> do
+                    _ <- liftIO $ addTeam env (map DraftTeam.golferId draftTeam) (mapMaybe User.id user)
+                    liftIO $ logger env DEBUG "Saved team - redireting"
+                    redirect "/display-team"
+                Just err -> do
+                    liftIO $ logger env ERROR $ "Tried to save team but validation failed" ++ err
+                    redirect "/"
+        get "/display-team" $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
+            c <- getCookie "majorplayer"
+            user <- liftIO $ getUserForSession env c
+            user' <- case user of 
+                Nothing -> do
+                    liftIO $ logger env ERROR "Could not find user to display team"
+                    redirect "/"
+                Just u -> pure u
+            team <- liftIO $ getTeam env (mapMaybe  User.id user) 
+            case team of 
+                Nothing -> do
+                    liftIO $ logger env WARN "No team found to display - redirecting"
+                    redirect "/"
+                Just t -> do
+                    let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
+                    t <- liftIO $ buildTeamPage $ Player user' playerTeam
+                    html $ TL.fromStrict t
+            
 
 
 main :: IO ()

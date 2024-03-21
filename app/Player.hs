@@ -9,8 +9,8 @@ import User (User(..))
 import Validation (Validatable (validate))
 
 data Player = Player 
-    { user :: User
-    , selected :: [Golfer]
+    { user :: !User
+    , selected :: ![Golfer]
     --, team :: [Golfer]
     }
 
