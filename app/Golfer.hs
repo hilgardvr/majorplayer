@@ -16,9 +16,9 @@ type GolferName = String
 type GolferId = Int
 
 data Golfer = Golfer
-    { id :: GolferId
-    , ranking :: Ranking
-    , name :: GolferName
+    { id :: !Int
+    , ranking :: !Ranking
+    , name :: !GolferName
     }
 
 instance ToMustache Golfer where
@@ -53,7 +53,7 @@ seperateAndClean c s =
 getGolfers :: IO [Golfer]
 getGolfers = do
     f <- readFile "downloaded_rankings.csv"
-    ls <- return $ take 10 $ lines f
+    ls <- return $ take 100 $ lines f
     sep <- return $ wordsSeperated ',' (head ls)  
     --print ("sep" ++ show sep)
     let nameIndex = case elemIndex "\"NAME\"" sep of
@@ -62,11 +62,11 @@ getGolfers = do
         rankingIndex = case elemIndex "\"RANKING\"" sep of
             Nothing -> error "Ranking not found"
             Just i -> i
-        golferId = 0 --case elemIndex "\"Player Id\"" (wordsSeperated ',' (head ls)) of
+        playerColumn = 0 --case elemIndex "\"Player Id\"" (wordsSeperated ',' (head ls)) of
             --Nothing -> error "Ranking not found"
             --Just i -> i
         ps = map (\e -> 
             let s = seperateAndClean ',' e in
-                Golfer (read (s!!golferId) :: GolferId) (read (s!!rankingIndex) :: Ranking) (s!!nameIndex)
+                Golfer (read (s!!playerColumn) :: GolferId) (read (s!!rankingIndex) :: Ranking) (s!!nameIndex)
             ) (tail ls)
     return ps

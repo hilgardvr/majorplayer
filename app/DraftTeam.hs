@@ -1,8 +1,8 @@
-module Team
-( Team(..)
-, addTeam
-, getTeam
-, deleteTeam
+module DraftTeam 
+( DraftTeam(..)
+, addDraftPlayer
+, getDraftTeam
+, deleteDraftPlayer
 ) where
 import Data.UUID (UUID)
 import User (UserId)
@@ -13,39 +13,35 @@ import Golfer (GolferId)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.FromRow (field, FromRow (fromRow))
-import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
 
 
-data Team = Team
+data DraftTeam = DraftTeam 
     { id :: !(Maybe UUID)
     , userId :: !UUID
-    , golferIds :: ![Int]
-    , tournamentId :: !String
-    } deriving (Show, Eq)
+    , golferId :: !Int
+    } deriving (Show)
 
+instance ToRow DraftTeam where
+    toRow (DraftTeam i u g) = case i of
+        Nothing -> [toField u, toField g]
+        Just i' -> toRow (i', u, g)
 
-instance ToRow Team where
-    toRow (Team i u g t) = case i of
-        Nothing -> [toField u, toField $ PGArray g, toField t]
-        Just i' -> toRow (i', u, PGArray g, t)
+instance FromRow DraftTeam where
+    fromRow = DraftTeam <$> field <*> field <*> field
 
-instance FromRow Team where
-    fromRow = Team <$> field <*> field <*> (fromPGArray <$> field) <*> field
-
-
-addTeam :: Env -> [GolferId] -> Maybe UserId -> IO ()
-addTeam env golferIds userId = do
+addDraftPlayer :: Env -> Int -> Maybe UserId -> IO ()
+addDraftPlayer env golferId userId = do
     case userId of 
         Nothing -> return ()
         Just uid -> do
-            logger env DEBUG $ "START :: adding team " ++ show golferIds ++ " for " ++ show userId
-            let team = Team Nothing uid golferIds "masters"
-            resp <- execute (conn env) (getQuery "insert into team (user_id, golfer_ids, tournament_id) values (?,?,?)") team
-            logger env DEBUG $ "END :: added team " ++ show golferIds ++ " for " ++ show userId ++ " - resp: " ++ show resp
+            logger env DEBUG $ "START :: adding draft player " ++ show golferId ++ " for " ++ show userId
+            let draftTeam = DraftTeam Nothing uid golferId
+            resp <- execute (conn env) (getQuery "insert into draft_team (user_id, golfer_id) values (?,?)") draftTeam
+            logger env DEBUG $ "END :: added draft player " ++ show golferId ++ " for " ++ show userId ++ " - resp: " ++ show resp
             return ()
 
-getTeam :: Env -> Maybe UserId -> IO [Team]
-getTeam env userId = do
+getDraftTeam :: Env -> Maybe UserId -> IO [DraftTeam]
+getDraftTeam env userId = do
     case userId of 
         Nothing -> return []
         Just uid -> do
@@ -54,8 +50,8 @@ getTeam env userId = do
             logger env DEBUG $ "END :: got draft team for " ++ show uid ++ ": " ++ show resp
             return resp
 
-deleteTeam :: Env -> GolferId -> Maybe UserId -> IO ()
-deleteTeam env golferId userId = do
+deleteDraftPlayer :: Env -> GolferId -> Maybe UserId -> IO ()
+deleteDraftPlayer env golferId userId = do
     case userId of
         Nothing -> return ()
         Just _ -> do
@@ -63,4 +59,3 @@ deleteTeam env golferId userId = do
             resp <- execute (conn env) (getQuery "delete from draft_team where user_id = (?) and golfer_id = (?)") [toField userId, toField golferId] 
             logger env DEBUG $ "END :: deleted draft player for " ++ show userId ++ ": " ++ show golferId ++ " - response: " ++ show resp
             return ()
-

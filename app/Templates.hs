@@ -12,6 +12,7 @@ import Data.Text (Text)
 import Text.Mustache.Compile (TemplateCache, cacheFromList)
 import Player (Player)
 import Golfer (Golfer)
+import Validation (ValidationError)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -26,15 +27,17 @@ home = "home.mustache"
 data UserTemplate = UserTemplate
     { player :: Maybe Player
     , golfers :: [Golfer]
+    , validationError :: ValidationError
     }
 
 
 instance ToMustache UserTemplate where
-    toMustache (UserTemplate Nothing g) = object
+    toMustache (UserTemplate Nothing g v) = object
         [ "golfers" ~> g ]
-    toMustache (UserTemplate (Just p) g) = object
+    toMustache (UserTemplate (Just p) g v) = object
         [ "golfers" ~> g
         , "player" ~> p
+        , "validationError" ~> v
         ]
 
 compiledTemplates :: IO TemplateCache
@@ -59,6 +62,7 @@ templateOrError tmpl = do
 
 buildTemplate :: (ToMustache a) => FilePath -> a -> IO Text
 buildTemplate f d = do
+    --putStrLn $ show $ toMustache d
     compiled <- templateOrError f
     return $ substitute compiled d
 

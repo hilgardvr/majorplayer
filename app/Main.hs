@@ -8,21 +8,20 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 import Web.Scotty.Cookie (getCookie, setCookie, makeSimpleCookie)
 import Player (Player(..))
 import Golfer (getGolfers, GolferId, Golfer(id, name))
-import Data.Foldable (find)
 import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
-import Session (createSession, Session (sessionId, userId), getSessionById)
+import Session (createSession, Session (userId, Session, id), getSessionById)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
 import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
-import Team (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId, DraftTeam))
+import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition)
-import qualified Team as DraftTeam
+import Control.Monad (liftM)
+import Validation (Validatable(validate))
 
 cookieKey :: Text
 cookieKey = "majorplayer"
-
 
 getUserForSession :: Env -> Maybe Text -> IO (Maybe User)
 getUserForSession env cookie = do
@@ -40,17 +39,25 @@ getUserForSession env cookie = do
             case sess of 
                 Nothing -> return Nothing 
                 Just s' -> getUserById env (userId s')
+
+getDraftTeamGolfers :: Env -> [Golfer] -> User -> IO ([Golfer], [Golfer])
+getDraftTeamGolfers env g u = do
+    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
+    let draftTeamIds = map (DraftTeam.golferId) draftTeam
+        (selected, notSelected) = partition (\e -> Golfer.id e `elem` draftTeamIds) g
+    return (selected, notSelected)
+        
     
 app :: Env -> IO ()
 app env = do
-    players <- getGolfers
+    allGolfers <- getGolfers
     scotty 3000 $ do
         get "/" $ do
             c <- getCookie cookieKey
             user <- liftIO $ getUserForSession env c
             case user of 
                 Nothing -> do
-                    t <- liftIO $ buildIndex $ UserTemplate Nothing players
+                    t <- liftIO $ buildIndex $ UserTemplate Nothing allGolfers Nothing
                     html $ TL.fromStrict t
                 Just _ -> redirect "/home"
         post "/login" $ do
@@ -65,12 +72,14 @@ app env = do
             user <- case existingUser of 
                     Nothing -> liftIO $ createUser env email
                     Just u -> return u
-            let userId = case User.id user of
-                    Nothing -> error "Expecting a userID"
-                    Just id' -> id'
+            userId <- case User.id user of
+                    Nothing -> do
+                        liftIO $ logger env ERROR "Expected a user id"
+                        error "Expected a user id"
+                    Just uid -> pure uid
             sess <- liftIO $ createSession env userId 
-            let sessId = case sessionId sess of
-                    Nothing -> error "Expecting a sessionID"
+            let sessId = case Session.id sess of
+                    Nothing -> error "Expecting a session id"
                     Just sid -> sid
             let c = makeSimpleCookie "majorplayer" (pack $ UUID.toString sessId)
             setCookie c
@@ -98,8 +107,10 @@ app env = do
             u <- case user of 
                     Nothing -> redirect "/"
                     Just u -> pure u
-            let player = Player u []
-            t <- liftIO $ buildIndex $ UserTemplate (Just player) players
+            (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+            let player = Player u selected
+                validated = validate player
+            t <- liftIO $ buildIndex $ UserTemplate (Just player) notSelected validated
             html $ TL.fromStrict t
         put (capture "/select/:golferId") $ do
             r <- request
@@ -115,12 +126,11 @@ app env = do
                     redirect "/"
                 Just u -> do
                     _ <- liftIO $ addDraftPlayer env readGolferId (User.id u) 
-                    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
-                    let draftTeamGolferIds = map DraftTeam.golferId draftTeam
-                        (selected, notSelected) = partition (\e -> elem (Golfer.id e) draftTeamGolferIds)  players
-                        player = Player u selected
+                    (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+                    let player = Player u selected
+                        validation = validate player
                     liftIO $ logger env DEBUG $ "selected :" ++ show (map name selected)
-                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected validation
                     html $ TL.fromStrict t
         put (capture "/deselect/:golferId") $ do
             r <- request
@@ -136,12 +146,11 @@ app env = do
                     redirect "/"
                 Just u -> do
                     _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u) 
-                    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
-                    let draftTeamGolferIds = map DraftTeam.golferId draftTeam
-                        (selected, notSelected) = partition (\e -> elem (Golfer.id e) draftTeamGolferIds)  players
-                        player = Player u selected
+                    (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+                    let player = Player u selected
+                        validation = validate player
                     liftIO $ logger env DEBUG ("selected :" ++ show (map name selected))
-                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected
+                    t <- liftIO $ buildHome $ UserTemplate (Just player) notSelected validation
                     html $ TL.fromStrict t
 
 

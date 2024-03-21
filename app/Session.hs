@@ -19,23 +19,22 @@ type SessionId = UUID
 data Session = Session 
     { id :: !(Maybe UUID)
     , userId :: !UserId
-    , sessionId :: !(Maybe SessionId)
     , expiry :: !(Maybe LocalTime)
     } deriving (Show)
 
 instance ToRow Session where
-    toRow (Session i u s e) = 
+    toRow (Session i u e) = 
         case i of 
             Nothing -> [toField u, toField e]
-            Just id' -> toRow (id', u, s, e)
+            Just id' -> toRow (id', u, e)
 
 instance FromRow Session where
-    fromRow = Session <$> field <*> field <*> field <*> field
+    fromRow = Session <$> field <*> field <*> field
 
 createSession :: Env -> UserId -> IO Session
 createSession env userId = do
-    let s = Session Nothing userId Nothing Nothing 
-    logger env DEBUG $ "Createing session for userId: " ++ show userId
+    let s = Session Nothing userId Nothing 
+    logger env DEBUG $ "Creating session for userId: " ++ show userId
     sess <- returning (conn env) (getQuery "insert into sessions(user_id, expiry) values (?,?) returning *") [s]
     logger env DEBUG $ "Created session: " ++ show sess
     return $ head sess
@@ -44,7 +43,7 @@ createSession env userId = do
 getSessionById :: Env -> SessionId -> IO (Maybe Session)
 getSessionById env sessId = do
     logger env DEBUG $ "getting user for session: " ++ show sessId
-    sess <- query (conn env) (getQuery "select * from sessions where session_id = (?)") [sessId] 
+    sess <- query (conn env) (getQuery "select * from sessions where id = (?)") [sessId] 
     logger env DEBUG $ "sess result for sessId: " ++ show sess
     if Prelude.null sess
     then return Nothing
