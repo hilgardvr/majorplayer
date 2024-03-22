@@ -1,39 +1,32 @@
 <div id="home">
-    <div>
-        {{^validationError}}
-            <button 
-                hx-post="/save-team"
-                hx-swap="outerHTML"
-                hx-target="#home"
-            >Save Team</button>
-        {{/validationError}}
-        {{#validationError}}
-            <h4>{{.}}</h4>
-        {{/validationError}}
-    </div>
 
     <h3>Selected golfers</h3>
-    {{#player.selected}}
+    <div>
         <div>
-            <button
-                hx-put="/deselect/{{id}}"
-                hx-swap="outerHTML"
-                hx-target="#home"
-                >
-                {{ranking}} - {{name}}
-            </button>
+            {{^validationError}}
+                <button 
+                    hx-post="/save-team"
+                    hx-swap="outerHTML"
+                    hx-target="#home"
+                >Save Team</button>
+                <br/>
+            {{/validationError}}
+            {{#validationError}}
+                <h4>{{.}}</h4>
+            {{/validationError}}
         </div>
-    {{/player.selected}}
-    <h3>Pick your golfers</h3>
-    {{#golfers}}
-        <div>
-            <button
-                hx-put="/select/{{id}}"
-                hx-swap="outerHTML"
-                hx-target="#home"
-                >
-                {{ranking}} - {{name}}
-            </button>
-        </div>
-    {{/golfers}}
+        {{#player.selected}}
+            <div>
+                <button
+                    hx-put="/deselect/{{id}}"
+                    hx-swap="outerHTML"
+                    hx-target="#home"
+                    >
+                    {{ranking}} - {{name}}
+                </button>
+            </div>
+        {{/player.selected}}
+        <h3>Pick your golfers</h3>
+        {{> golfers.mustache}}
+    </div>
 </div>

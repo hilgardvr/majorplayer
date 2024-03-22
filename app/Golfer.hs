@@ -19,7 +19,7 @@ data Golfer = Golfer
     { id :: !Int
     , ranking :: !Ranking
     , name :: !GolferName
-    }
+    } deriving (Show)
 
 instance ToMustache Golfer where
     toMustache (Golfer { Golfer.id = i, Golfer.ranking = r, Golfer.name = n }) =

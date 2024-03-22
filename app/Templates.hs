@@ -6,6 +6,7 @@ module Templates
 , buildIndex
 , buildHome
 , buildTeamPage
+, buildGolfers
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -26,6 +27,9 @@ home = "home.mustache"
 
 team :: FilePath
 team = "team.mustache"
+
+golfersPartial :: FilePath
+golfersPartial = "golfers.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -76,3 +80,6 @@ buildHome = buildTemplate home
 
 buildTeamPage :: Player -> IO Text
 buildTeamPage = buildTemplate team 
+
+buildGolfers :: UserTemplate -> IO Text
+buildGolfers = buildTemplate golfersPartial

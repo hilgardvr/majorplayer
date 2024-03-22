@@ -1,6 +1,10 @@
 <div id="home">
     <div>
-        <button hx-get="/home">Change Team</button>
+        <button 
+            hx-get="/home"
+            hx-swap="outerHtml"
+            hx-target="#home"
+        >Change Team</button>
     </div>
 
     <h3>Selected golfers</h3>

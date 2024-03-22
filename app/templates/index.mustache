@@ -1,6 +1,7 @@
 <html>
     <head> 
         <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
+        <!--script src="https://cdn.tailwindcss.com"></script-->
     </head>
     <body>
         <h2>MajorPlayer</h2> 
@@ -9,7 +10,6 @@
         {{/player}}
         {{#player}}
             <h4>Logged in as {{player.user.email}}</h4>
-            <h4>{{player}}</h4>
             {{> home.mustache }}
         {{/player}}
     </body>

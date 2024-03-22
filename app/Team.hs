@@ -5,19 +5,17 @@ module Team
 , deleteTeam
 ) where
 import Data.UUID (UUID)
-import User (UserId, User)
+import User (UserId)
 import Env (LogLevel(DEBUG, ERROR), Env (logger, conn))
 import Database.PostgreSQL.Simple (ToRow, execute, query, FromRow)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
-import Golfer (GolferId, Golfer (Golfer))
+import Golfer (GolferId)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.FromRow (field, FromRow (fromRow))
 import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
-import Validation (Validatable (validate), ValidationError)
-import Data.List (nub, delete)
-import Data.Maybe (isJust)
-import Text.Mustache (ToMustache)
+import Validation (Validatable (validate))
+import qualified Data.Set as Set
 
 
 data Team = Team
@@ -38,7 +36,7 @@ instance FromRow Team where
 
 instance Validatable Team where
     validate (Team i u g t) = 
-        let unique = nub t
+        let unique = Set.fromList t
             --found = filter (\e -> contains (Golfer.id e) unique) 
         in 
             if length unique == 8

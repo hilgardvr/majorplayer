@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
-import Web.Scotty (scotty, get, html, ActionM, post, request, formParam, capture, captureParam, put, redirect, header)
+import Web.Scotty (scotty, get, html, ActionM, post, request, formParam, capture, captureParam, put, redirect, header, param)
 import qualified Data.Text.Lazy as TL
 import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -16,10 +16,10 @@ import Data.Text (pack, Text)
 import qualified Data.Text as T
 import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
-import Data.List (partition)
+import Data.List (partition, isInfixOf)
 import Validation (Validatable(validate))
 import Team (addTeam, getTeam, Team (golferIds))
-import qualified DraftTeam as Team
+import Data.Char (toLower)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
@@ -191,6 +191,30 @@ app env = do
                     let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
                     t <- liftIO $ buildTeamPage $ Player user' playerTeam
                     html $ TL.fromStrict t
+        get "/filter-available" $ do
+            r <- request
+            liftIO $ logger env DEBUG $ show r
+            c <- getCookie "majorplayer"
+            user <- liftIO $ getUserForSession env c
+            search <- param "golfer"
+            liftIO $ logger env DEBUG $ "Found golfer searched for: " ++ search
+            user' <- case user of 
+                Nothing -> do
+                    liftIO $ logger env ERROR "Could not find user to display team"
+                    redirect "/"
+                Just u -> pure u
+            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user) 
+            let lower = map toLower
+            let golfers = 
+                    if search == ""
+                    then allGolfers
+                    else filter (\e -> isInfixOf (lower search) (lower (Golfer.name e))) allGolfers
+            liftIO $ logger env DEBUG $ "Found golfers: " ++ show golfers
+            t <- liftIO $ buildGolfers $ UserTemplate Nothing golfers Nothing
+            html $ TL.fromStrict t
+
+
+
             
 
 
@@ -199,4 +223,3 @@ main = do
     conn <- connect "localhost" 5432 "postgres" "password"
     let env = getEnv conn
     app env
-
