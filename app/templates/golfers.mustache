@@ -1,22 +1,22 @@
 <div id="available-golfers">
-<input
-        hx-trigger="keyup changed delay:1s"
-        hx-get="/filter-available"
-        hx-target="#available-golfers"
-        hx-swap="outerHTML"
-        name="golfer"
-        type="text"
-        value="Search"
-/>
-{{#golfers}}
-    <div>
-        <button
-            hx-put="/select/{{id}}"
+    <input
+            hx-trigger="keyup changed delay:1.5s"
+            hx-get="/filter-available"
+            hx-target="#available-golfers"
             hx-swap="outerHTML"
-            hx-target="#home"
-            >
-            {{ranking}} - {{name}}
-        </button>
-    </div>
-{{/golfers}}
+            name="golfer"
+            type="text"
+            placeholder="Search"
+            value=""
+    />
+    {{#golfers}}
+        <div>
+            <button
+                hx-put="/select/{{id}}"
+                hx-target="#home"
+                >
+                {{ranking}} - {{name}}
+            </button>
+        </div>
+    {{/golfers}}
 </div>

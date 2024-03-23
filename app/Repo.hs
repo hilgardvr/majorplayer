@@ -4,7 +4,7 @@ module Repo
 ( getQuery
 , connect
 ) where
-import Database.PostgreSQL.Simple (Connection, connectPostgreSQL, query, execute_, query_, Query)
+import Database.PostgreSQL.Simple (Connection, connectPostgreSQL, execute_, Query)
 import Data.ByteString.UTF8 as BSU
 import System.Directory (getDirectoryContents)
 import Data.Text as T

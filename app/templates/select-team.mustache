@@ -1,0 +1,27 @@
+<h3>Selected golfers</h3>
+<div>
+    <div>
+        {{^validationError}}
+            <button 
+                hx-post="/save-team"
+                hx-target="#home"
+            >Save Team</button>
+            <br/>
+        {{/validationError}}
+        {{#validationError}}
+            <h4>{{.}}</h4>
+        {{/validationError}}
+    </div>
+    {{#player.selected}}
+        <div>
+            <button
+                hx-put="/deselect/{{id}}"
+                hx-target="#home"
+                >
+                {{ranking}} - {{name}}
+            </button>
+        </div>
+    {{/player.selected}}
+    <h3>Pick your golfers</h3>
+    {{> golfers.mustache}}
+</div>

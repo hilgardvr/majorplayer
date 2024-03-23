@@ -22,7 +22,7 @@ import qualified Data.Set as Set
 data DraftTeam = DraftTeam 
     { id :: !(Maybe UUID)
     , userId :: !UUID
-    , golferId :: !Int
+    , golferId :: !GolferId
     } deriving (Show, Eq, Ord)
 
 instance ToRow DraftTeam where

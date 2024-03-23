@@ -1,16 +1,13 @@
-<div id="home">
-    <div>
-        <button 
-            hx-get="/home"
-            hx-swap="outerHtml"
-            hx-target="#home"
-        >Change Team</button>
-    </div>
-
-    <h3>Selected golfers</h3>
-    {{#selected}}
-        <div>
-            {{ranking}} - {{name}}
-        </div>
-    {{/selected}}
+<div>
+    <button 
+        hx-get="/change-team"
+        hx-target="#home"
+    >Change Team</button>
 </div>
+
+<h3>Selected golfers</h3>
+{{#selected}}
+    <div>
+        {{ranking}} - {{name}}
+    </div>
+{{/selected}}

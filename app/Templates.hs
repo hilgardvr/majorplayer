@@ -2,11 +2,11 @@
 
 module Templates
 ( index
-, home
+--, home
 , buildIndex
 , buildHome
 , buildTeamPage
-, buildGolfers
+, buildFilteredGolfers
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -15,6 +15,7 @@ import Text.Mustache.Compile (TemplateCache, cacheFromList)
 import Player (Player)
 import Golfer (Golfer)
 import Validation (ValidationError)
+import Env (Env (logger), LogLevel (DEBUG))
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -22,14 +23,17 @@ searchSpace = ["./app/templates"]
 index :: FilePath
 index = "index.mustache"
 
-home :: FilePath
-home = "home.mustache"
+--home :: FilePath
+--home = "home.mustache"
+
+selectTeamPartial :: FilePath
+selectTeamPartial = "select-team.mustache"
 
 team :: FilePath
 team = "team.mustache"
 
-golfersPartial :: FilePath
-golfersPartial = "golfers.mustache"
+filteredGolfersPartial :: FilePath
+filteredGolfersPartial = "golfers.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -66,20 +70,21 @@ templateOrError tmpl = do
             error $ "Error getting compile with cache:" ++ show err
         Right t' -> return t'
 
-buildTemplate :: (ToMustache a) => FilePath -> a -> IO Text
-buildTemplate f d = do
-    --putStrLn $ show $ toMustache d
+buildTemplate :: (ToMustache a) => Env -> FilePath -> a -> IO Text
+buildTemplate env f d = do
+    logger env DEBUG $ "START :: Compiling " ++ show f
     compiled <- templateOrError f
+    logger env DEBUG $ "END :: Compiled " ++ show f
     return $ substitute compiled d
 
-buildIndex :: UserTemplate -> IO Text
-buildIndex = buildTemplate index
+buildIndex :: Env -> UserTemplate -> IO Text
+buildIndex env = buildTemplate env index
 
-buildHome :: UserTemplate -> IO Text
-buildHome = buildTemplate home
+buildHome :: Env -> UserTemplate -> IO Text
+buildHome env = buildTemplate env selectTeamPartial
 
-buildTeamPage :: Player -> IO Text
-buildTeamPage = buildTemplate team 
+buildTeamPage :: Env -> Player -> IO Text
+buildTeamPage env = buildTemplate env team 
 
-buildGolfers :: UserTemplate -> IO Text
-buildGolfers = buildTemplate golfersPartial
+buildFilteredGolfers :: Env -> UserTemplate -> IO Text
+buildFilteredGolfers env = buildTemplate env filteredGolfersPartial

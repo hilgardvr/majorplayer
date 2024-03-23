@@ -16,7 +16,7 @@ type GolferName = String
 type GolferId = Int
 
 data Golfer = Golfer
-    { id :: !Int
+    { id :: !GolferId
     , ranking :: !Ranking
     , name :: !GolferName
     } deriving (Show)
