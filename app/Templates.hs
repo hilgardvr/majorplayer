@@ -2,9 +2,8 @@
 
 module Templates
 ( index
---, home
 , buildIndex
-, buildHome
+, buildSelectTeamPartial
 , buildTeamPage
 , buildFilteredGolfers
 , UserTemplate(..)
@@ -80,8 +79,8 @@ buildTemplate env f d = do
 buildIndex :: Env -> UserTemplate -> IO Text
 buildIndex env = buildTemplate env index
 
-buildHome :: Env -> UserTemplate -> IO Text
-buildHome env = buildTemplate env selectTeamPartial
+buildSelectTeamPartial :: Env -> UserTemplate -> IO Text
+buildSelectTeamPartial env = buildTemplate env selectTeamPartial
 
 buildTeamPage :: Env -> Player -> IO Text
 buildTeamPage env = buildTemplate env team 

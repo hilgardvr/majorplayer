@@ -6,10 +6,10 @@ module Golfer
 , GolferName
 , GolferId
 , getGolfers
+, filterGolfersById
 ) where 
-import Data.List (elemIndex)
+import Data.List (elemIndex, partition)
 import Text.Mustache (ToMustache (toMustache), object, (~>))
-
 
 type Ranking = Int
 type GolferName = String
@@ -49,13 +49,14 @@ seperateAndClean c s =
     let sep = wordsSeperated c s
     in map cleanString sep
 
+filterGolfersById :: [GolferId] -> [Golfer] -> ([Golfer], [Golfer])
+filterGolfersById gids = partition (\e -> Golfer.id e `elem` gids)
 
 getGolfers :: IO [Golfer]
 getGolfers = do
     f <- readFile "downloaded_rankings.csv"
-    ls <- return $ take 100 $ lines f
+    ls <- return $ take 200 $ lines f
     sep <- return $ wordsSeperated ',' (head ls)  
-    --print ("sep" ++ show sep)
     let nameIndex = case elemIndex "\"NAME\"" sep of
             Nothing -> error "Name not found"
             Just i -> i

@@ -7,10 +7,10 @@ import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Web.Scotty.Cookie (getCookie, setCookie, makeSimpleCookie, deleteCookie)
 import Player (Player(..))
-import Golfer (getGolfers, GolferId, Golfer(id, name))
+import Golfer (getGolfers, GolferId, Golfer(id, name), filterGolfersById)
 import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
-import Session (createSession, Session (userId, id), getSessionById)
+import Session (createSession, Session (userId, id, Session), getSessionById)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
@@ -18,8 +18,9 @@ import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition, isInfixOf)
 import Validation (Validatable(validate))
-import Team (addTeam, getTeam, Team (golferIds))
+import Team (addTeam, getTeam, Team (golferIds, userId))
 import Data.Char (toLower)
+import Text.ParserCombinators.ReadPrec (lift)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
@@ -68,23 +69,15 @@ app env = do
                 Nothing -> logger env DEBUG "host not found"
                 Just h ->  logger env DEBUG $ "host: " ++ show h
             c <- getCookie cookieKey
-            c' <- case c of 
-                    Nothing -> redirect "/"
-                    Just c' -> pure c'
-            liftIO $ logger env DEBUG $ "found home cookie"
-            sessId <- case UUID.fromString $ T.unpack c' of
-                    Nothing -> error "Cant get sessionId from cookie"
-                    Just s -> return s
-            sess <- liftIO $ getSessionById env sessId
-            s' <- case sess of 
-                    Nothing -> redirect "/"
-                    Just s' -> pure s'
-            user <- liftIO $ getUserById env (userId s')
+            user <- liftIO $ getUserForSession env c
             u <- case user of 
                     Nothing -> redirect "/"
                     Just u -> pure u
-            (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-            let player = Player u selected
+            team <- liftIO $ getTeam env (User.id u)
+            let (teamSelected, notSelected) = case team of
+                    Nothing -> ([], allGolfers)
+                    Just t -> filterGolfersById (Team.golferIds t) allGolfers
+            let player = Player u teamSelected
                 validated = validate player
             t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
             html $ TL.fromStrict t
@@ -101,7 +94,7 @@ app env = do
             let player = Player u selected
                 validated = validate player
                 ut = UserTemplate (Just player) notSelected validated
-            t <- liftIO $ buildHome env ut
+            t <- liftIO $ buildSelectTeamPartial env ut
             html $ TL.fromStrict t
         put (capture "/select/:golferId") $ do
             r <- request
@@ -121,7 +114,7 @@ app env = do
                     let player = Player u selected
                         validation = validate player
                     liftIO $ logger env DEBUG $ "selected :" ++ show (map name selected)
-                    t <- liftIO $ buildHome env $ UserTemplate (Just player) notSelected validation
+                    t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
                     html $ TL.fromStrict t
         put (capture "/deselect/:golferId") $ do
             r <- request
@@ -141,7 +134,7 @@ app env = do
                     let player = Player u selected
                         validation = validate player
                     liftIO $ logger env DEBUG ("selected :" ++ show (map name selected))
-                    t <- liftIO $ buildHome env $ UserTemplate (Just player) notSelected validation
+                    t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
                     html $ TL.fromStrict t
         post "/save-team" $ do
             r <- request
@@ -170,8 +163,9 @@ app env = do
             team <- liftIO $ getTeam env (mapMaybe  User.id user) 
             case team of 
                 Nothing -> do
-                    liftIO $ logger env WARN "No team found to display - redirecting"
-                    redirect "/"
+                    liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
+                    t <- liftIO $ buildTeamPage env $ Player user' []
+                    html $ TL.fromStrict t
                 Just t -> do
                     let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
                     t <- liftIO $ buildTeamPage env $ Player user' playerTeam
@@ -223,7 +217,7 @@ getUserForSession env cookie = do
             sess <- getSessionById env sessId
             case sess of 
                 Nothing -> return Nothing 
-                Just s' -> getUserById env (userId s')
+                Just s' -> getUserById env (Session.userId s')
 
 getDraftTeamGolfers :: Env -> [Golfer] -> User -> IO ([Golfer], [Golfer])
 getDraftTeamGolfers env g u = do

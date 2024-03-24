@@ -11,7 +11,7 @@ import Validation (Validatable (validate))
 data Player = Player 
     { user :: !User
     , selected :: ![Golfer]
-    --, team :: [Golfer]
+    --, team :: Team
     }
 
 instance ToMustache Player where
