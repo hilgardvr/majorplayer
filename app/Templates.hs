@@ -6,6 +6,7 @@ module Templates
 , buildSelectTeamPartial
 , buildTeamPage
 , buildFilteredGolfers
+, buildLeaguesPartial
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -15,15 +16,13 @@ import Player (Player)
 import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
+import User (User)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
 
 index :: FilePath
 index = "index.mustache"
-
---home :: FilePath
---home = "home.mustache"
 
 selectTeamPartial :: FilePath
 selectTeamPartial = "select-team.mustache"
@@ -33,6 +32,9 @@ team = "team.mustache"
 
 filteredGolfersPartial :: FilePath
 filteredGolfersPartial = "golfers.mustache"
+
+leaguesPartial :: FilePath
+leaguesPartial = "leagues.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -87,3 +89,6 @@ buildTeamPage env = buildTemplate env team
 
 buildFilteredGolfers :: Env -> UserTemplate -> IO Text
 buildFilteredGolfers env = buildTemplate env filteredGolfersPartial
+
+buildLeaguesPartial :: Env -> User -> IO Text
+buildLeaguesPartial env = buildTemplate env leaguesPartial

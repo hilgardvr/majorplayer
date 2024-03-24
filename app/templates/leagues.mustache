@@ -1,0 +1,26 @@
+<div>
+    <form hx-post="/create-league">
+        <div id="league-validation">
+        </div>
+        <input
+            type="text" 
+            name="league-name"
+            hx-post="/validate-league-name"
+            hx-trigger="keyup changed delay:1.5s"
+            hx-target="#league-validation"
+            placeholder="League Name"
+        />
+        <input
+            type="text" 
+            name="league-passcode"
+            placeholder="Optional League Passcode"
+        />
+        <button 
+            hx-post="/create-league"
+            hx-target="#home"
+        >
+            Create League
+        </button>
+    </form>
+        
+</div>
