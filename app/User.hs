@@ -29,6 +29,13 @@ instance ToRow User where
 instance FromRow User where
     fromRow = User <$> field <*> field
 
+instance ToMustache User where
+    toMustache (User i e) = object
+        [ "email" ~> e ]
+
+instance ToMustache UUID where
+    toMustache = toMustache . show 
+
 createUser :: Env -> Email -> IO User
 createUser env email = do
     logger env DEBUG $ "creating user for " ++ email
@@ -56,6 +63,3 @@ getUserById env userId = do
     else return $ Just $ head user
 
 
-instance ToMustache User where
-    toMustache (User i e) = object
-        [ "email" ~> e ]

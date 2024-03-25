@@ -17,6 +17,7 @@ import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
 import User (User)
+import League (League)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -90,5 +91,5 @@ buildTeamPage env = buildTemplate env team
 buildFilteredGolfers :: Env -> UserTemplate -> IO Text
 buildFilteredGolfers env = buildTemplate env filteredGolfersPartial
 
-buildLeaguesPartial :: Env -> User -> IO Text
+buildLeaguesPartial :: Env -> [League] -> IO Text
 buildLeaguesPartial env = buildTemplate env leaguesPartial

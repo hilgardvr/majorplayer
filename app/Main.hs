@@ -22,9 +22,7 @@ import Team (addTeam, getTeam, Team (golferIds))
 import Data.Char (toLower)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import qualified Data.Text.Lazy as Tl
-import League (createLeague, League (League, name))
-import Text.Mustache.Types (Value(String))
-import Text.ParserCombinators.ReadPrec (lift)
+import League (createLeague, League (League, name), getLeaguesForUser)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
@@ -183,12 +181,18 @@ app env = do
         get "/leagues" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            user' <- case user of 
+            userId <- case user of 
                 Nothing -> do
-                    liftIO $ logger env ERROR "Could not find user to display team"
+                    liftIO $ logger env ERROR "Could not find user to find league"
                     redirect "/"
-                Just u -> pure u
-            t <- liftIO $ buildLeaguesPartial env user'
+                Just u -> case User.id u of
+                    Nothing -> do
+                        let msg = "Could not find userId"
+                        liftIO $ logger env ERROR msg
+                        error msg
+                    Just uid -> return uid
+            leagues <- liftIO $ getLeaguesForUser env userId
+            t <- liftIO $ buildLeaguesPartial env leagues
             html $ Tl.fromStrict t
         post "/create-league" $ do
             c <- getCookie "majorplayer"
@@ -209,9 +213,9 @@ app env = do
                     then Nothing
                     else Just leaguePasscode
             let league = League Nothing uid leagueName pcMaybe
-            l <- liftIO $ createLeague env league
-            liftIO $ logger env DEBUG $ "created league " ++ League.name l
-            t <- liftIO $ buildLeaguesPartial env user'
+            _ <- liftIO $ createLeague env league
+            leagues <- liftIO $ getLeaguesForUser env uid
+            t <- liftIO $ buildLeaguesPartial env leagues
             html $ Tl.fromStrict t
         get "/logout" $ do
             _ <- deleteCookie cookieKey
