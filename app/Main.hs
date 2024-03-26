@@ -22,17 +22,10 @@ import Team (addTeam, getTeam, Team (golferIds))
 import Data.Char (toLower)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import qualified Data.Text.Lazy as Tl
-import League (createLeague, League (League, name), getLeaguesForUser)
+import League (League(..), getLeaguesForUser, createLeague)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
-
-
---addUserDetails :: (PathsAndQueries -> RequestHeaders -> IO PathsAndQueries) -> Middleware
---addUserDetails f = do
---    r <- request
---    r
---
 
 app :: Env -> IO ()
 app env = do
@@ -42,7 +35,7 @@ app env = do
         get "/" $ do
             c <- getCookie cookieKey
             user <- liftIO $ getUserForSession env c
-            case user of 
+            case user of
                 Nothing -> do
                     t <- liftIO $ buildIndex env $ UserTemplate Nothing allGolfers Nothing
                     html $ TL.fromStrict t
@@ -51,7 +44,7 @@ app env = do
             email <- formParam "email" :: ActionM String
             existingUser <- liftIO $ getUserByEmail env email
             liftIO $ logger env DEBUG $ "existingUser : " ++ show existingUser
-            user <- case existingUser of 
+            user <- case existingUser of
                     Nothing -> liftIO $ createUser env email
                     Just u -> return u
             userId <- case User.id user of
@@ -59,7 +52,7 @@ app env = do
                         liftIO $ logger env ERROR "Expected a user id"
                         error "Expected a user id"
                     Just uid -> pure uid
-            sess <- liftIO $ createSession env userId 
+            sess <- liftIO $ createSession env userId
             let sessId = case Session.id sess of
                     Nothing -> error "Expecting a session id"
                     Just sid -> sid
@@ -69,7 +62,7 @@ app env = do
         get "/home" $ do 
             c <- getCookie cookieKey
             user <- liftIO $ getUserForSession env c
-            u <- case user of 
+            u <- case user of
                     Nothing -> redirect "/"
                     Just u -> pure u
             team <- liftIO $ getTeam env (User.id u)
@@ -83,7 +76,7 @@ app env = do
         get "/change-team" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            u <- case user of 
+            u <- case user of
                     Nothing -> redirect "/"
                     Just u -> pure u
             (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
@@ -99,12 +92,12 @@ app env = do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
             let readGolferId = read gid :: GolferId
-            case user of 
+            case user of
                 Nothing -> do
                     liftIO $ logger env WARN $ "Could not find user to select golfer. Session: " ++ show c
                     redirect "/"
                 Just u -> do
-                    _ <- liftIO $ addDraftPlayer env readGolferId (User.id u) 
+                    _ <- liftIO $ addDraftPlayer env readGolferId (User.id u)
                     (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
                     let player = Player u selected
                         validation = validate player
@@ -121,7 +114,7 @@ app env = do
                     liftIO $ logger env WARN $ "Could not find user to deselect golfer. Session: " ++ show c
                     redirect "/"
                 Just u -> do
-                    _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u) 
+                    _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u)
                     (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
                     let player = Player u selected
                         validation = validate player
@@ -131,7 +124,7 @@ app env = do
         post "/save-team" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user) 
+            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user)
             case validate draftTeam of
                 Nothing -> do
                     _ <- liftIO $ addTeam env (map DraftTeam.golferId draftTeam) (mapMaybe User.id user)
@@ -143,13 +136,13 @@ app env = do
         get "/display-team" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            user' <- case user of 
+            user' <- case user of
                 Nothing -> do
                     liftIO $ logger env ERROR "Could not find user to display team"
                     redirect "/"
                 Just u -> pure u
-            team <- liftIO $ getTeam env (mapMaybe  User.id user) 
-            case team of 
+            team <- liftIO $ getTeam env (mapMaybe  User.id user)
+            case team of
                 Nothing -> do
                     liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
                     t <- liftIO $ buildTeamPage env $ Player user' []
@@ -168,9 +161,9 @@ app env = do
                     liftIO $ logger env ERROR "Could not find user to display team"
                     redirect "/"
                 Just u -> pure u
-            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user) 
+            draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user)
             let lower = map toLower
-            let golfers = 
+            let golfers =
                     if search == ""
                     then filter (\e -> not (elem (Golfer.id e) (map (DraftTeam.golferId) draftTeam))) allGolfers
                     else filter (\e -> isInfixOf (lower search) (lower (Golfer.name e))
@@ -181,7 +174,7 @@ app env = do
         get "/leagues" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            userId <- case user of 
+            userId <- case user of
                 Nothing -> do
                     liftIO $ logger env ERROR "Could not find user to find league"
                     redirect "/"
@@ -197,7 +190,7 @@ app env = do
         post "/create-league" $ do
             c <- getCookie "majorplayer"
             user <- liftIO $ getUserForSession env c
-            user' <- case user of 
+            user' <- case user of
                 Nothing -> do
                     liftIO $ logger env ERROR "Could not find user to display team"
                     redirect "/"
@@ -209,7 +202,7 @@ app env = do
             liftIO $ logger env DEBUG $ "League name: " ++ leagueName
             leaguePasscode <- formParam "league-passcode" :: ActionM String
             liftIO $ logger env DEBUG $ "League passcode: " ++ leaguePasscode
-            let pcMaybe = if leaguePasscode == "" 
+            let pcMaybe = if leaguePasscode == ""
                     then Nothing
                     else Just leaguePasscode
             let league = League Nothing uid leagueName pcMaybe
@@ -237,14 +230,14 @@ getUserForSession env cookie = do
                         error  err
                     Just s -> return s
             sess <- getSessionById env sessId
-            case sess of 
-                Nothing -> return Nothing 
+            case sess of
+                Nothing -> return Nothing
                 Just s' -> getUserById env (Session.userId s')
 
 getDraftTeamGolfers :: Env -> [Golfer] -> User -> IO ([Golfer], [Golfer])
 getDraftTeamGolfers env g u = do
-    draftTeam <- liftIO $ getDraftTeam env (User.id u) 
-    let draftTeamIds = map (DraftTeam.golferId) draftTeam
+    draftTeam <- liftIO $ getDraftTeam env (User.id u)
+    let draftTeamIds = map DraftTeam.golferId draftTeam
         (selected, notSelected) = partition (\e -> Golfer.id e `elem` draftTeamIds) g
     return (selected, notSelected)
 

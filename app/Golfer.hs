@@ -33,9 +33,9 @@ wordsSeperated :: Char -> String -> [String]
 wordsSeperated _ [] = []
 wordsSeperated c xs = case takeWhile (/=c) xs of
     [] -> []
-    s' -> 
+    s' ->
         let tl = dropWhile (/= c) xs
-        in 
+        in
             if null tl
             then [s']
             else s' : wordsSeperated c (tail tl)
@@ -45,7 +45,7 @@ cleanString [] = []
 cleanString (h:t) = if h == '"' then cleanString t else h : cleanString t
 
 seperateAndClean :: Char -> String -> [String]
-seperateAndClean c s = 
+seperateAndClean c s =
     let sep = wordsSeperated c s
     in map cleanString sep
 
@@ -56,7 +56,7 @@ getGolfers :: IO [Golfer]
 getGolfers = do
     f <- readFile "downloaded_rankings.csv"
     ls <- return $ take 200 $ lines f
-    sep <- return $ wordsSeperated ',' (head ls)  
+    sep <- return $ wordsSeperated ',' (head ls)
     let nameIndex = case elemIndex "\"NAME\"" sep of
             Nothing -> error "Name not found"
             Just i -> i

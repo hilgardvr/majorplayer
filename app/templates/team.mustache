@@ -1,14 +1,13 @@
-<div>
-    <button 
-        hx-get="/change-team"
-        hx-target="#home"
-    >Pick Team</button>
-</div>
-
 <h3>My Team</h3>
 {{^selected}}
     <div>
         <h4>No Team Saved - Please Pick And Save Your Team</h4>
+        <div>
+            <button
+                hx-get="/change-team"
+                hx-target="#home"
+            >Pick Team Now</button>
+        </div>
     </div>
 {{/selected}}
 {{#selected}}

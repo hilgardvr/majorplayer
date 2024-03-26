@@ -37,21 +37,20 @@ instance FromRow Team where
 instance Validatable Team where
     validate (Team i u g t) = 
         let unique = Set.fromList t
-            --found = filter (\e -> contains (Golfer.id e) unique) 
-        in 
+            --found = filter (\e -> contains (Golfer.id e) unique)
+        in
             if length unique == 8
             then Nothing
             else Just $ "Expected 8 unique golfers, got " ++ show (length unique)
-            
 
 
 addTeam :: Env -> [GolferId] -> Maybe UserId -> IO ()
 addTeam env golferIds userId = do
-    case userId of 
+    case userId of
         Nothing -> return ()
         Just uid -> do
             existing <- getTeam env userId
-            _ <- case existing of 
+            _ <- case existing of
                 Just e -> deleteTeam env userId
                 Nothing -> logger env DEBUG "No existing team found, creating new one"
             logger env DEBUG $ "START :: adding team " ++ show golferIds ++ " for " ++ show userId
