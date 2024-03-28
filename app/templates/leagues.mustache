@@ -1,4 +1,17 @@
 <div>
+    <form hx-post="/join-league">
+        <input
+            type="text" 
+            name="league-name"
+            hx-post="/join-league"
+            hx-target="#home"
+            placeholder="League Name"
+        />
+        <button type="submit">Join League</button>
+    </form>
+    {{#leagues}}
+        <p>name {{ name }}</p>
+    {{/leagues}}
     <form hx-post="/create-league">
         <div id="league-validation">
         </div>
@@ -22,6 +35,4 @@
             Create League
         </button>
     </form>
-    {{.}}
-        <p>name {{ name }}</p>
 </div>

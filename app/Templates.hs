@@ -52,6 +52,15 @@ instance ToMustache UserTemplate where
         , "validationError" ~> v
         ]
 
+data LeaguePartial = LeaguePartial
+    { leagues :: ![League]
+    }
+
+instance ToMustache LeaguePartial where
+    toMustache (LeaguePartial ls) = object
+        [ "leagues" ~> ls ]
+
+
 compiledTemplates :: IO TemplateCache
 compiledTemplates = do
     compiledIndexTemplate <- automaticCompile searchSpace index
@@ -92,4 +101,4 @@ buildFilteredGolfers :: Env -> UserTemplate -> IO Text
 buildFilteredGolfers env = buildTemplate env filteredGolfersPartial
 
 buildLeaguesPartial :: Env -> [League] -> IO Text
-buildLeaguesPartial env = buildTemplate env leaguesPartial
+buildLeaguesPartial env ls = buildTemplate env leaguesPartial (LeaguePartial ls)
