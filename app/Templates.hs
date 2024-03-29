@@ -16,8 +16,9 @@ import Player (Player)
 import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
-import User (User)
-import League (League)
+import User (User, UserId)
+import League (League (adminId))
+import Data.List
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -53,12 +54,15 @@ instance ToMustache UserTemplate where
         ]
 
 data LeaguePartial = LeaguePartial
-    { leagues :: ![League]
+    { adminLeagues :: ![League]
+    , leagues :: ![League]
     }
 
 instance ToMustache LeaguePartial where
-    toMustache (LeaguePartial ls) = object
-        [ "leagues" ~> ls ]
+    toMustache (LeaguePartial al ls) = object
+        [ "leagues" ~> ls 
+        , "adminLeagues" ~> al
+        ]
 
 
 compiledTemplates :: IO TemplateCache
@@ -100,5 +104,7 @@ buildTeamPage env = buildTemplate env team
 buildFilteredGolfers :: Env -> UserTemplate -> IO Text
 buildFilteredGolfers env = buildTemplate env filteredGolfersPartial
 
-buildLeaguesPartial :: Env -> [League] -> IO Text
-buildLeaguesPartial env ls = buildTemplate env leaguesPartial (LeaguePartial ls)
+buildLeaguesPartial :: Env -> UserId -> [League] -> IO Text
+buildLeaguesPartial env uid ls = 
+    let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
+    in buildTemplate env leaguesPartial (LeaguePartial admin nonAdmin)

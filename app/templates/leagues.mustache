@@ -1,18 +1,22 @@
 <div>
-    <form hx-post="/join-league">
+    {{#adminLeagues}}
+        <p><b>{{ name }}</b> (Admin - new member join passcode <b>{{passcode}}</b>)</p>
+    {{/adminLeagues}}
+    {{#leagues}}
+        <p><b>{{ name }}</b></p>
+    {{/leagues}}
+    <form>
         <input
             type="text" 
-            name="league-name"
+            name="league-passcode"
+            placeholder="League Passcode"
+        />
+        <button
             hx-post="/join-league"
             hx-target="#home"
-            placeholder="League Name"
-        />
-        <button type="submit">Join League</button>
+        >Join League</button>
     </form>
-    {{#leagues}}
-        <p>name {{ name }}</p>
-    {{/leagues}}
-    <form hx-post="/create-league">
+    <form>
         <div id="league-validation">
         </div>
         <input
@@ -22,11 +26,6 @@
             hx-trigger="keyup changed delay:1.5s"
             hx-target="#league-validation"
             placeholder="League Name"
-        />
-        <input
-            type="text" 
-            name="league-passcode"
-            placeholder="Optional League Passcode"
         />
         <button 
             hx-post="/create-league"

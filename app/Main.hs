@@ -14,7 +14,7 @@ import Session (createSession, Session (userId, id), getSessionById)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
-import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR))
+import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR, INFO))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition, isInfixOf)
 import Validation (Validatable(validate))
@@ -23,7 +23,6 @@ import Data.Char (toLower)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import qualified Data.Text.Lazy as Tl
 import League (League(..), getLeaguesForUser, createLeague, joinLeague)
-import Text.ParserCombinators.ReadPrec (lift)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
@@ -186,7 +185,7 @@ app env = do
                         error msg
                     Just uid -> return uid
             leagues <- liftIO $ getLeaguesForUser env userId
-            t <- liftIO $ buildLeaguesPartial env leagues
+            t <- liftIO $ buildLeaguesPartial env userId leagues
             html $ Tl.fromStrict t
         post "/create-league" $ do
             c <- getCookie "majorplayer"
@@ -201,15 +200,9 @@ app env = do
                     Just i -> i
             leagueName <- formParam "league-name" :: ActionM String
             liftIO $ logger env DEBUG $ "League name: " ++ leagueName
-            --leaguePasscode <- formParam "league-passcode" :: ActionM String
-            --liftIO $ logger env DEBUG $ "League passcode: " ++ leaguePasscode
-            --let pcMaybe = if leaguePasscode == ""
-            --        then Nothing
-            --        else Just leaguePasscode
-            let league = League Nothing uid leagueName
-            _ <- liftIO $ createLeague env league
+            _ <- liftIO $ createLeague env uid leagueName
             leagues <- liftIO $ getLeaguesForUser env uid
-            t <- liftIO $ buildLeaguesPartial env leagues
+            t <- liftIO $ buildLeaguesPartial env uid leagues
             html $ Tl.fromStrict t
         post "/join-league" $ do
             c <- getCookie "majorplayer"
@@ -224,17 +217,20 @@ app env = do
                         liftIO $ logger env ERROR "Userid not found"
                         error "Userid not found"
                     Just i -> return i
-            leagueName <- formParam "league-name" :: ActionM String
-            _ <- liftIO $ joinLeague env uid leagueName
+            leagueName <- formParam "league-passcode" :: ActionM String
+            joinedMaybe <- liftIO $ joinLeague env uid leagueName
+            case joinedMaybe of
+                Nothing -> liftIO $ logger env INFO $ "No league found for passcode"
+                Just j -> liftIO $ logger env DEBUG $ "User " ++ show uid ++ " joined " ++ League.name j
             leaguesForUser <- liftIO $ getLeaguesForUser env uid
-            t <- liftIO $ buildLeaguesPartial env leaguesForUser
+            t <- liftIO $ buildLeaguesPartial env uid leaguesForUser
             html $ Tl.fromStrict t
         get "/logout" $ do
             _ <- deleteCookie cookieKey
             redirect "/"
 
 mapMaybe :: (a -> Maybe b) -> Maybe a -> Maybe b
-mapMaybe f a = maybe Nothing f a
+mapMaybe f a = f =<< a
 
 getUserForSession :: Env -> Maybe Text -> IO (Maybe User)
 getUserForSession env cookie = do
