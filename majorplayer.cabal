@@ -92,6 +92,9 @@ executable majorplayer
         , wai-extra == 3.1.14
         , http-types == 0.12.4
         , string-random == 0.1.4.3
+        , http-conduit == 2.3.8.3
+        , aeson == 2.2.1.0
+        --, bytestring == 0.12.1.0
 
     -- Directories containing source files.
     hs-source-dirs:   app

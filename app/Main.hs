@@ -7,7 +7,7 @@ import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Web.Scotty.Cookie (getCookie, setCookie, makeSimpleCookie, deleteCookie)
 import Player (Player(..))
-import Golfer (getGolfers, GolferId, Golfer(id, name), filterGolfersById)
+import Golfer (getGolfers, GolferId, Golfer(id, name), filterGolfersById, getGolferApi)
 import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
 import Session (createSession, Session (userId, id), getSessionById)
@@ -29,7 +29,8 @@ cookieKey = "majorplayer"
 
 app :: Env -> IO ()
 app env = do
-    allGolfers <- getGolfers
+    --allGolfers <- getGolfers
+    allGolfers <- getGolferApi env
     scotty 3000 $ do
         middleware logStdout
         get "/" $ do
@@ -69,7 +70,10 @@ app env = do
             let (teamSelected, notSelected) = case team of
                     Nothing -> ([], allGolfers)
                     Just t -> filterGolfersById (Team.golferIds t) allGolfers
-            let player = Player u teamSelected
+            let player = Player 
+                    { user = u
+                    , selected = teamSelected
+                    }
                 validated = validate player
             t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
             html $ TL.fromStrict t

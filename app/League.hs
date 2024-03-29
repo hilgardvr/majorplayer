@@ -9,7 +9,7 @@ module League
 where
 import Data.UUID (UUID)
 import Env (Env (logger, conn), LogLevel (DEBUG, ERROR))
-import Database.PostgreSQL.Simple (ToRow, FromRow, returning, query, Query)
+import Database.PostgreSQL.Simple (ToRow, FromRow, returning, query, Query, Connection)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
@@ -136,15 +136,13 @@ joinLeague env uid ln = do
                             logger env DEBUG $ "created league user for in league: " ++ show r
                             return $ Just $ head r
 
---tryTransactionLogErrToEmpty :: ( Env -> Query -> [a]
---tryTransactionLogErrToEmpty env q = do
---    res <- try 
+--tryTransactionLogErrToEmpty :: (ToRow q, FromRow r, (Connection -> Query -> [ToRow q] -> IO [r]) tr) => Env -> tr -> Query -> [q] -> IO [a]
+--tryTransactionLogErrToEmpty env tr q params = do
+--    res <- try $ tr (conn env) q params :: IO (Either SomeException [a])
+--    case res of 
+--        Left e -> 
+--            logger env ERROR $ "caught e: " ++ show e
+--            return []
+--        Right r -> 
+--            logger env INFO $ "successfull transaction: " ++ show q
 
---getUserById :: Env -> UserId -> IO (Maybe User)
---getUserById env userId = do
---    logger env DEBUG $ "getting user by id: " ++ show userId
---    user <- query (conn env) (getQuery "select * from users where id = (?)") [userId]
---    logger env DEBUG $ "user result for id: " ++ show user
---    if null user
---    then return Nothing
---    else return $ Just $ head user
