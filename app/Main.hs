@@ -14,7 +14,7 @@ import Session (createSession, Session (userId, id), getSessionById)
 import qualified Data.UUID as UUID
 import Data.Text (pack, Text)
 import qualified Data.Text as T
-import Env (getEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR, INFO))
+import Env (getAppEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR, INFO))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition, isInfixOf)
 import Validation (Validatable(validate))
@@ -29,7 +29,7 @@ cookieKey = "majorplayer"
 
 app :: Env -> IO ()
 app env = do
-    --allGolfers <- getGolfers
+    --allGolfers <- getGpring mix autowired an andspring lfers
     allGolfers <- getGolferApi env
     scotty 3000 $ do
         middleware logStdout
@@ -263,6 +263,5 @@ getDraftTeamGolfers env g u = do
 
 main :: IO ()
 main = do
-    conn <- connect "localhost" 5432 "postgres" "password"
-    let env = getEnv conn
+    env <- getAppEnv
     app env

@@ -3,6 +3,10 @@
 module Repo
 ( getQuery
 , connect
+, DBHOST
+, DBPORT
+, DBUSER
+, DBPASS
 ) where
 import Database.PostgreSQL.Simple (Connection, connectPostgreSQL, execute_, Query)
 import Data.ByteString.UTF8 as BSU
@@ -13,10 +17,10 @@ import Data.Char (isDigit)
 import Data.List (sortBy)
 import qualified Data.String
 
-type Host = String
-type Port = Int
-type User = String
-type Password = String
+type DBHOST = String
+type DBPORT = Int
+type DBUSER = String
+type DBPASS = String
 
 migrationsDir = "./migrations"
 
@@ -42,7 +46,7 @@ migrate conn = do
             return ()
         ) sorted
 
-connect :: Host -> Port -> User -> Password -> IO Connection
+connect :: DBHOST -> DBPORT -> DBUSER -> DBPASS -> IO Connection
 connect host port user pass = do
     let connString = "host=" ++ host ++ " port=" ++ show port ++ " user=" ++ user ++ " password=" ++ pass
     conn <- connectPostgreSQL $ BSU.fromString connString
