@@ -29,6 +29,7 @@ loginRoutes env allGolfers = do
                 t <- liftIO $ buildIndex env $ UserTemplate Nothing allGolfers Nothing
                 html $ TL.fromStrict t
             Just _ -> redirect "/home"
+            
     post "/login" $ do
         email <- formParam "email" :: ActionM String
         existingUser <- liftIO $ getUserByEmail env email
@@ -48,6 +49,7 @@ loginRoutes env allGolfers = do
         let c = makeSimpleCookie "majorplayer" (pack $ UUID.toString sessId)
         setCookie c
         redirect "/home"
+
     get "/home" $ do 
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
@@ -65,6 +67,7 @@ loginRoutes env allGolfers = do
             validated = validate player
         t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
         html $ TL.fromStrict t
+
     get "logout" $ do
         _ <- deleteCookie (cookieKey env)
         redirect "/"

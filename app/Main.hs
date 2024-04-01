@@ -1,7 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Main where
-import Data.Text (Text)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import LoginController (loginRoutes)
 import TeamController (teamRoutes)
@@ -9,10 +6,6 @@ import Web.Scotty (scotty, middleware)
 import LeagueController (leagueRoutes)
 import Env (Env, getAppEnv)
 import Golfer (getGolferApi)
-
-cookieKey :: Text
-cookieKey = "majorplayer"
-
 
 app :: Env -> IO ()
 app env = do

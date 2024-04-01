@@ -35,6 +35,7 @@ leagueRoutes env allGolfers = do
         leagues <- liftIO $ getLeaguesForUser env userId
         t <- liftIO $ buildLeaguesPartial env userId leagues
         html $ TL.fromStrict t
+
     get "/league/:leagueId" $ do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
@@ -58,6 +59,7 @@ leagueRoutes env allGolfers = do
         teams <- liftIO $ getTeamsForUsers env users
         t <- liftIO $ buildLeaguePartial env teams
         html $ TL.fromStrict t
+
     post "/create-league" $ do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
@@ -75,6 +77,7 @@ leagueRoutes env allGolfers = do
         leagues <- liftIO $ getLeaguesForUser env uid
         t <- liftIO $ buildLeaguesPartial env uid leagues
         html $ TL.fromStrict t
+
     post "/join-league" $ do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
