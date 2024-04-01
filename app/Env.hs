@@ -35,9 +35,6 @@ appLogger l s = do
     time <- getCurrentTime
     putStrLn $ show time ++ " :: " ++ show l ++ " :: " ++ s
 
-splitAtUnSafe :: Char -> String -> (String, String)
-splitAtUnSafe c s = (takeWhile (/= c) s, dropWhile (/= c) s)
-
 readAndSet :: FilePath -> IO ()
 readAndSet fp = do
     f <- readFile fp

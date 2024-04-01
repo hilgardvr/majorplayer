@@ -7,7 +7,7 @@ import Templates
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Web.Scotty.Cookie (getCookie, setCookie, makeSimpleCookie, deleteCookie)
 import Player (Player(..))
-import Golfer (getGolfers, GolferId, Golfer(id, name), filterGolfersById, getGolferApi)
+import Golfer (GolferId, Golfer(id, name), filterGolfersById, getGolferApi)
 import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
 import Session (createSession, Session (userId, id), getSessionById)
