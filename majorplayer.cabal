@@ -63,6 +63,9 @@ executable majorplayer
 
     -- Modules included in this executable, other than Main.
     other-modules: Templates
+        , LoginController
+        , TeamController
+        , LeagueController
         , Golfer
         , Player
         , Repo
@@ -98,6 +101,11 @@ executable majorplayer
 
     -- Directories containing source files.
     hs-source-dirs:   app
+        , app/service
+        , app/repo
+        , app/view
+        , app/utils
+        , app/controllers
 
     -- Base language which the package is written in.
     default-language: Haskell2010

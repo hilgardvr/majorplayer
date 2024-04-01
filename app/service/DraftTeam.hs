@@ -71,3 +71,4 @@ deleteDraftPlayer env golferId userId = do
             resp <- execute (conn env) (getQuery "delete from draft_team where user_id = (?) and golfer_id = (?)") [toField userId, toField golferId] 
             logger env DEBUG $ "END :: deleted draft player for " ++ show userId ++ ": " ++ show golferId ++ " - response: " ++ show resp
             return ()
+

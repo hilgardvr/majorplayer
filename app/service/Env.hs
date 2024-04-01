@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Env
 ( LogLevel(..)
 , Env(..)
@@ -8,6 +10,7 @@ import Data.Time (getCurrentTime)
 import System.Environment (getEnv, setEnv, lookupEnv)
 import Data.List (elemIndex)
 import qualified Repo as R (connect)
+import Data.Text (Text)
 --import GHC.Stack ( HasCallStack, getCallStack, callStack )
 
 data LogLevel = DEBUG | INFO | WARN | ERROR deriving (Show)
@@ -19,6 +22,7 @@ data Env = Env
     , logger :: !(LogLevel -> String -> IO ())
     , gldApiKey :: !String
     , gldApiHost :: !String
+    , cookieKey :: !Text
     }
 
 devEnvFile :: FilePath
@@ -74,10 +78,11 @@ getAppEnv = do
     print apiHost
     apiKey <- getEnv "GLD_API_KEY"
     print apiKey
-    conn <- R.connect dbHost (5432) dbUser dbPass
+    conn <- R.connect dbHost 5432 dbUser dbPass
     return Env 
         { conn = conn
         , logger = appLogger
         , gldApiKey = apiKey
         , gldApiHost = apiHost
+        , cookieKey = "majorplayer"
         }
