@@ -1,13 +1,16 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module Team
 ( Team(..)
 , addTeam
 , getTeam
 , deleteTeam
+, getTeamsForUsers
 ) where
 import Data.UUID (UUID)
 import User (UserId)
 import Env (LogLevel(DEBUG, ERROR), Env (logger, conn))
-import Database.PostgreSQL.Simple (ToRow, execute, query, FromRow)
+import Database.PostgreSQL.Simple (ToRow, execute, query, FromRow, Only (Only), In (In))
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Golfer (GolferId)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
@@ -16,6 +19,10 @@ import Database.PostgreSQL.Simple.FromRow (field, FromRow (fromRow))
 import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
 import Validation (Validatable (validate))
 import qualified Data.Set as Set
+import Text.Mustache (ToMustache (toMustache), object, (~>))
+import Control.Exception (SomeException(SomeException), try)
+import Data.List (intercalate)
+import qualified Data.UUID as UUID
 
 
 data Team = Team
@@ -34,10 +41,16 @@ instance ToRow Team where
 instance FromRow Team where
     fromRow = Team <$> field <*> field <*> (fromPGArray <$> field) <*> field
 
+instance ToMustache Team where
+    toMustache (Team i uid gids ti) = object
+        [ "userId" ~> uid
+        , "golferIds" ~> gids
+        , "tournamentId" ~> ti
+        ]
+
 instance Validatable Team where
     validate (Team i u g t) = 
         let unique = Set.fromList t
-            --found = filter (\e -> contains (Golfer.id e) unique)
         in
             if length unique == 8
             then Nothing
@@ -63,15 +76,28 @@ getTeam :: Env -> Maybe UserId -> IO (Maybe Team)
 getTeam env userId = do
     case userId of 
         Nothing -> do
-            logger env ERROR ("No userId supplied to get team with")
+            logger env ERROR "No userId supplied to get team with"
             error "No userId supplied to get team with"
         Just uid -> do
             logger env DEBUG $ "START :: getting team for " ++ show uid
             resp <- query (conn env) (getQuery "select * from team where user_id = (?)") [uid]
             logger env DEBUG $ "END :: got team for " ++ show uid ++ ": " ++ show resp
-            if length resp >= 1
-            then return $ Just $ head resp
-            else return Nothing 
+            if null resp
+            then return Nothing 
+            else return $ Just $ head resp
+
+getTeamsForUsers :: Env -> [UserId] -> IO [Team]
+getTeamsForUsers env userIds = do
+    logger env DEBUG $ "START :: getting teams for " ++ show userIds
+    resp <- try $ query (conn env) (getQuery "select * from team where user_id in ?") $ Only $ In userIds :: IO (Either SomeException [Team])
+    case resp of
+        Left e -> do
+            logger env ERROR $ "failed to get teams for users: " ++ show e
+            error $ "failed to get teams for users: " ++ show e
+        Right r -> do
+            logger env DEBUG $ "got teams for users: " ++ show r
+            logger env DEBUG $ "END :: got teams for " ++ show userIds ++ ": " ++ show resp
+            return r
 
 deleteTeam :: Env -> Maybe UserId -> IO ()
 deleteTeam env userId = do

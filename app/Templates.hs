@@ -7,6 +7,7 @@ module Templates
 , buildTeamPage
 , buildFilteredGolfers
 , buildLeaguesPartial
+, buildLeaguePartial
 , UserTemplate(..)
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
@@ -19,6 +20,7 @@ import Env (Env (logger), LogLevel (DEBUG))
 import User (User, UserId)
 import League (League (adminId))
 import Data.List
+import Team (Team)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -37,6 +39,9 @@ filteredGolfersPartial = "golfers.mustache"
 
 leaguesPartial :: FilePath
 leaguesPartial = "leagues.mustache"
+
+leaguePartial :: FilePath
+leaguePartial = "league.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -64,6 +69,12 @@ instance ToMustache LeaguePartial where
         , "adminLeagues" ~> al
         ]
 
+data Teams = Teams 
+    { teams :: ![Team] }
+
+instance ToMustache Teams where
+    toMustache (Teams ts) = object
+        [ "teams" ~> ts ]
 
 compiledTemplates :: IO TemplateCache
 compiledTemplates = do
@@ -108,3 +119,6 @@ buildLeaguesPartial :: Env -> UserId -> [League] -> IO Text
 buildLeaguesPartial env uid ls = 
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
     in buildTemplate env leaguesPartial (LeaguePartial admin nonAdmin)
+
+buildLeaguePartial :: Env -> [Team] -> IO Text
+buildLeaguePartial env ts = buildTemplate env leaguePartial (Teams { teams = ts })

@@ -8,7 +8,6 @@ import Control.Monad.IO.Class (MonadIO(liftIO))
 import Web.Scotty.Cookie (getCookie, setCookie, makeSimpleCookie, deleteCookie)
 import Player (Player(..))
 import Golfer (GolferId, Golfer(id, name), filterGolfersById, getGolferApi)
-import Repo (connect)
 import User (User(id), createUser, getUserByEmail, getUserById)
 import Session (createSession, Session (userId, id), getSessionById)
 import qualified Data.UUID as UUID
@@ -18,18 +17,17 @@ import Env (getAppEnv, Env (logger), LogLevel (DEBUG, WARN, ERROR, INFO))
 import DraftTeam (getDraftTeam, addDraftPlayer, deleteDraftPlayer, DraftTeam (golferId))
 import Data.List (partition, isInfixOf)
 import Validation (Validatable(validate))
-import Team (addTeam, getTeam, Team (golferIds))
+import Team (addTeam, getTeam, Team (golferIds), getTeamsForUsers)
 import Data.Char (toLower)
 import Network.Wai.Middleware.RequestLogger (logStdout)
 import qualified Data.Text.Lazy as Tl
-import League (League(..), getLeaguesForUser, createLeague, joinLeague)
+import League (League(..), getLeaguesForUser, createLeague, joinLeague, getUsersForLeague)
 
 cookieKey :: Text
 cookieKey = "majorplayer"
 
 app :: Env -> IO ()
 app env = do
-    --allGolfers <- getGpring mix autowired an andspring lfers
     allGolfers <- getGolferApi env
     scotty 3000 $ do
         middleware logStdout
@@ -190,6 +188,29 @@ app env = do
                     Just uid -> return uid
             leagues <- liftIO $ getLeaguesForUser env userId
             t <- liftIO $ buildLeaguesPartial env userId leagues
+            html $ Tl.fromStrict t
+        get "/league/:leagueId" $ do
+            c <- getCookie "majorplayer"
+            user <- liftIO $ getUserForSession env c
+            userId <- case user of
+                Nothing -> do
+                    liftIO $ logger env ERROR "Could not find user to find league"
+                    redirect "/"
+                Just u -> case User.id u of
+                    Nothing -> do
+                        let msg = "Could not find userId"
+                        liftIO $ logger env ERROR msg
+                        error msg
+                    Just uid -> return uid
+            lidStr <- captureParam "leagueId"
+            lid <- case UUID.fromString lidStr of
+                    Nothing -> do
+                        liftIO $ logger env ERROR $ "Failed to parse uuid from string: " ++ lidStr
+                        error $ "Failed to parse uuid from string: " ++ lidStr
+                    Just i -> do return i
+            users <- liftIO $ getUsersForLeague env lid
+            teams <- liftIO $ getTeamsForUsers env users
+            t <- liftIO $ buildLeaguePartial env teams
             html $ Tl.fromStrict t
         post "/create-league" $ do
             c <- getCookie "majorplayer"

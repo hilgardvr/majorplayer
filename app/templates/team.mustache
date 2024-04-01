@@ -1,17 +1,19 @@
-<h3>My Team</h3>
-{{^selected}}
-    <div>
-        <h4>No Team Saved - Please Pick And Save Your Team</h4>
+<div>
+    <h3>My Team</h3>
+    {{^selected}}
         <div>
-            <button
-                hx-get="/change-team"
-                hx-target="#home"
-            >Pick Team Now</button>
+            <h4>No Team Saved - Please Pick And Save Your Team</h4>
         </div>
-    </div>
-{{/selected}}
-{{#selected}}
+    {{/selected}}
     <div>
-        {{ranking}} - {{name}}
+        <button
+            hx-get="/change-team"
+            hx-target="#home"
+            >Pick Team</button>
     </div>
-{{/selected}}
+    {{#selected}}
+        <div>
+            {{ranking}} - {{name}}
+        </div>
+    {{/selected}}
+</div>

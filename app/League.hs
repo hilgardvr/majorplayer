@@ -5,11 +5,12 @@ module League
 , createLeague
 , getLeaguesForUser
 , joinLeague
+, getUsersForLeague
 )
 where
 import Data.UUID (UUID)
 import Env (Env (logger, conn), LogLevel (DEBUG, ERROR))
-import Database.PostgreSQL.Simple (ToRow, FromRow, returning, query, Query, Connection)
+import Database.PostgreSQL.Simple (ToRow, FromRow, returning, query)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
@@ -19,8 +20,7 @@ import Text.Mustache (object, ToMustache (toMustache), (~>))
 import Utils (getSafeHead)
 import Text.StringRandom (stringRandomIO)
 import Data.Text (unpack)
-import Control.Exception (try, SomeException (SomeException))
-import Database.PostgreSQL.Simple.Errors (ConstraintViolation(UniqueViolation))
+import Control.Exception (try, SomeException)
 
 type LeagueId = UUID
 type LeagueName = String
@@ -101,6 +101,18 @@ getLeaguesForUser env uid = do
     logger env DEBUG $ "got leagues for user: " ++ show uid ++ " - length " ++ (show $ length leagues)
     return leagues
 
+getUsersForLeague :: Env -> LeagueId -> IO [UUID]
+getUsersForLeague env lid = do
+    logger env DEBUG $ "getting users for league: " ++ show lid
+    leagueUsers <- try $ query (conn env) (getQuery "select * from league_users where league_id = (?)") [lid] :: IO (Either SomeException [LeagueUser])
+    case leagueUsers of
+        Left e -> do
+            logger env ERROR $ "failed to get league users: " ++ show e
+            error $ "failed to get league users: " ++ show e
+        Right lus -> do
+            logger env DEBUG $ "got users for league: " ++ show lid ++ " - length " ++ (show $ length leagueUsers)
+            return $ map userId lus
+
 getLeagueByName :: Env -> LeagueName -> IO (Maybe League)
 getLeagueByName env ln = do
     logger env DEBUG $ "getting league by name: " ++ show ln
@@ -109,9 +121,9 @@ getLeagueByName env ln = do
     return $ getSafeHead leagues
     
 getLeagueByPasscode :: Env -> LeaguePasscode -> IO (Maybe League)
-getLeagueByPasscode env ln = do
-    logger env DEBUG $ "getting league by passcode: " ++ show ln
-    leagues <- query (conn env) (getQuery "select id, admin_id, name, passcode from leagues l where l.passcode = (?)") [ln]
+getLeagueByPasscode env lpc = do
+    logger env DEBUG $ "getting league by passcode: " ++ show lpc
+    leagues <- query (conn env) (getQuery "select id, admin_id, name, passcode from leagues l where l.passcode = (?)") [lpc]
     logger env DEBUG $ "got league by passcode: - length " ++ (show $ map name leagues)
     return $ getSafeHead leagues
 
@@ -135,14 +147,3 @@ joinLeague env uid ln = do
                         Right r -> do
                             logger env DEBUG $ "created league user for in league: " ++ show r
                             return $ Just $ head r
-
---tryTransactionLogErrToEmpty :: (ToRow q, FromRow r, (Connection -> Query -> [ToRow q] -> IO [r]) tr) => Env -> tr -> Query -> [q] -> IO [a]
---tryTransactionLogErrToEmpty env tr q params = do
---    res <- try $ tr (conn env) q params :: IO (Either SomeException [a])
---    case res of 
---        Left e -> 
---            logger env ERROR $ "caught e: " ++ show e
---            return []
---        Right r -> 
---            logger env INFO $ "successfull transaction: " ++ show q
-
