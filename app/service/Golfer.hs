@@ -25,7 +25,6 @@ import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Control.Exception (SomeException, try)
 import Repo (getQuery)
-import Data.Time.Clock.TAI (utcToTAITime)
 
 type Ranking = Int
 type GolferName = String

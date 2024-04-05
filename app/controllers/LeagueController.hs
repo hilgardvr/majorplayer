@@ -11,11 +11,12 @@ import Utils (getUserForSession)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (buildLeaguesPartial, buildLeaguePartial)
 import qualified Data.Text.Lazy as TL
-import User (id)
-import League (getLeaguesForUser, getUsersForLeague, createLeague, joinLeague, League (name))
+import User (id, getUsersByIds)
+import League (getLeaguesForUser, createLeague, joinLeague, League (name), getUserIdsForLeague)
 import qualified Data.UUID as UUID
 import Golfer (Golfer)
 import Team (getTeamsForUsers)
+import DetailedTeam (buildTeamDetailsDTO)
 
 leagueRoutes :: Env -> [Golfer] -> ScottyM ()
 leagueRoutes env allGolfers = do
@@ -55,9 +56,11 @@ leagueRoutes env allGolfers = do
                     liftIO $ logger env ERROR $ "Failed to parse uuid from string: " ++ lidStr
                     error $ "Failed to parse uuid from string: " ++ lidStr
                 Just i -> do return i
-        users <- liftIO $ getUsersForLeague env lid
-        teams <- liftIO $ getTeamsForUsers env users
-        t <- liftIO $ buildLeaguePartial env teams
+        userIds <- liftIO $ getUserIdsForLeague env lid
+        teams <- liftIO $ getTeamsForUsers env userIds
+        users <- liftIO $ getUsersByIds env userIds
+        let teamDetails = buildTeamDetailsDTO env teams users allGolfers
+        t <- liftIO $ buildLeaguePartial env teamDetails
         html $ TL.fromStrict t
 
     post "/create-league" $ do

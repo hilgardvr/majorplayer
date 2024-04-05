@@ -20,7 +20,8 @@ import Env (Env (logger), LogLevel (DEBUG))
 import User (User, UserId)
 import League (League (adminId))
 import Data.List
-import Team (Team)
+import Team (Team (userId))
+import DetailedTeam (TeamDetailedDTO)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -58,19 +59,20 @@ instance ToMustache UserTemplate where
         , "validationError" ~> v
         ]
 
-data LeaguePartial = LeaguePartial
+data LeaguesPartial = LeaguesPartial
     { adminLeagues :: ![League]
     , leagues :: ![League]
     }
 
-instance ToMustache LeaguePartial where
-    toMustache (LeaguePartial al ls) = object
+instance ToMustache LeaguesPartial where
+    toMustache (LeaguesPartial al ls) = object
         [ "leagues" ~> ls 
         , "adminLeagues" ~> al
         ]
 
+
 data Teams = Teams 
-    { teams :: ![Team] }
+    { teams :: ![TeamDetailedDTO] }
 
 instance ToMustache Teams where
     toMustache (Teams ts) = object
@@ -118,7 +120,10 @@ buildFilteredGolfers env = buildTemplate env filteredGolfersPartial
 buildLeaguesPartial :: Env -> UserId -> [League] -> IO Text
 buildLeaguesPartial env uid ls = 
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
-    in buildTemplate env leaguesPartial (LeaguePartial admin nonAdmin)
+    in buildTemplate env leaguesPartial (LeaguesPartial admin nonAdmin)
 
-buildLeaguePartial :: Env -> [Team] -> IO Text
-buildLeaguePartial env ts = buildTemplate env leaguePartial (Teams { teams = ts })
+--buildLeaguePartial :: Env -> [Team] -> [Golfer] -> IO Text
+--buildLeaguePartial env ts gs = buildTemplate env leaguePartial (Teams { teams = ts })
+
+buildLeaguePartial :: Env -> [TeamDetailedDTO] -> IO Text
+buildLeaguePartial env t = buildTemplate env leaguePartial (Teams { teams = t }) 

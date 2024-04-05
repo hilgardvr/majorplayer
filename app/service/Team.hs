@@ -20,15 +20,13 @@ import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
 import Validation (Validatable (validate))
 import qualified Data.Set as Set
 import Text.Mustache (ToMustache (toMustache), object, (~>))
-import Control.Exception (SomeException(SomeException), try)
-import Data.List (intercalate)
-import qualified Data.UUID as UUID
+import Control.Exception (SomeException, try)
 
 
 data Team = Team
     { id :: !(Maybe UUID)
-    , userId :: !UUID
-    , golferIds :: ![Int]
+    , userId :: !UserId
+    , golferIds :: ![GolferId]
     , tournamentId :: !String
     } deriving (Show, Eq)
 

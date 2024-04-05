@@ -5,15 +5,17 @@ module User
 , UserId
 , getUserById
 , getUserByEmail
+, getUsersByIds
 ) where
 import Text.Mustache (ToMustache (toMustache), object, (~>))
-import Database.PostgreSQL.Simple (Connection, ToRow, FromRow, returning, query)
+import Database.PostgreSQL.Simple (Connection, ToRow, FromRow, returning, query, Only (Only), In (In))
 import Data.UUID (UUID)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
-import Env (Env (conn, logger), LogLevel (DEBUG))
+import Env (Env (conn, logger), LogLevel (DEBUG, ERROR))
+import Control.Exception (try, SomeException)
 
 type Email = String
 type UserId = UUID
@@ -63,3 +65,14 @@ getUserById env userId = do
     else return $ Just $ head user
 
 
+getUsersByIds :: Env -> [UserId] -> IO [User]
+getUsersByIds env userIds = do
+    logger env DEBUG $ "getting user by id: " ++ show userIds
+    users <- try $ query (conn env) (getQuery "select * from users where id in ?") $ Only $ In userIds :: IO (Either SomeException [User])
+    case users of
+        Left e -> do
+            logger env ERROR $ "error fetching users with ids: " ++ show e
+            error $ "error fetching users with ids: " ++ show e
+        Right us -> do
+            logger env DEBUG $ "found users size " ++ show (map User.id us) ++ " of requested " ++ show userIds
+            return us

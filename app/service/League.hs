@@ -5,7 +5,7 @@ module League
 , createLeague
 , getLeaguesForUser
 , joinLeague
-, getUsersForLeague
+, getUserIdsForLeague
 )
 where
 import Data.UUID (UUID)
@@ -101,8 +101,8 @@ getLeaguesForUser env uid = do
     logger env DEBUG $ "got leagues for user: " ++ show uid ++ " - length " ++ (show $ length leagues)
     return leagues
 
-getUsersForLeague :: Env -> LeagueId -> IO [UUID]
-getUsersForLeague env lid = do
+getUserIdsForLeague :: Env -> LeagueId -> IO [UUID]
+getUserIdsForLeague env lid = do
     logger env DEBUG $ "getting users for league: " ++ show lid
     leagueUsers <- try $ query (conn env) (getQuery "select * from league_users where league_id = (?)") [lid] :: IO (Either SomeException [LeagueUser])
     case leagueUsers of
