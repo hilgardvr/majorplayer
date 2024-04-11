@@ -11,6 +11,7 @@ import System.Environment (getEnv, setEnv, lookupEnv)
 import Data.List (elemIndex)
 import qualified Repo as R (connect)
 import Data.Text (Text)
+import Data.ByteString.Char8 (readInt)
 --import GHC.Stack ( HasCallStack, getCallStack, callStack )
 
 data LogLevel = DEBUG | INFO | WARN | ERROR deriving (Show)
@@ -23,6 +24,7 @@ data Env = Env
     , gldApiKey :: !String
     , gldApiHost :: !String
     , cookieKey :: !Text
+    , season :: !Int
     }
 
 devEnvFile :: FilePath
@@ -78,11 +80,13 @@ getAppEnv = do
     print apiHost
     apiKey <- getEnv "GLD_API_KEY"
     print apiKey
-    conn <- R.connect dbHost 5432 dbUser dbPass
+    season <- getEnv "SEASON"
+    conn <- R.connect dbHost (read dbPort) dbUser dbPass
     return Env 
         { conn = conn
         , logger = appLogger
         , gldApiKey = apiKey
         , gldApiHost = apiHost
         , cookieKey = "majorplayer"
+        , season = read season
         }

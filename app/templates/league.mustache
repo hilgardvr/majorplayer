@@ -1,5 +1,17 @@
 <div>
     {{#teams}}
-        <p>user </p>
+        <p>{{user.email}}</p>
+        <table>
+            <tr>
+                <th>Name</th>
+                <th>Ranking</th>
+            </tr>
+            {{#teamGolfers}}
+                <tr>
+                    <td>{{name}}</td>
+                    <td>{{ranking}}</td>
+                </tr>
+            {{/teamGolfers}}
+        </table>
     {{/teams}}
 </div>

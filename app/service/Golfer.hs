@@ -5,7 +5,6 @@ module Golfer
 , Ranking
 , GolferName
 , GolferId
---, getGolfers
 , getGolferApi
 , filterGolfersById
 ) where 
@@ -25,6 +24,7 @@ import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Control.Exception (SomeException, try)
 import Repo (getQuery)
+import GolfLeaderboardDataAPIResponse (ApiMeta)
 
 type Ranking = Int
 type GolferName = String
@@ -51,8 +51,8 @@ instance FromJSON Golfer where
         <*> v .: "player_name"
 
 data ApiResponse = ApiResponse
-    { meta :: ApiMeta
-    , results :: ApiRankings
+    { meta :: !ApiMeta
+    , results :: !ApiRankings
     } deriving (Show)
 
 instance FromJSON ApiResponse where
@@ -60,15 +60,15 @@ instance FromJSON ApiResponse where
         <$> v .: "meta" 
         <*> v .: "results"
 
-data ApiMeta = ApiMeta
-    { title :: String
-    , description :: String
-    } deriving (Show)
-
-instance FromJSON ApiMeta where
-    parseJSON = withObject "ApiMeta" $ \v -> ApiMeta
-        <$> v .: "title"
-        <*> v .: "description"
+--data ApiMeta = ApiMeta
+--    { title :: String
+--    , description :: String
+--    } deriving (Show)
+--
+--instance FromJSON ApiMeta where
+--    parseJSON = withObject "ApiMeta" $ \v -> ApiMeta
+--        <$> v .: "title"
+--        <*> v .: "description"
 
 data ApiRankings = ApiRankings
     { rankings :: [Golfer]
@@ -114,7 +114,7 @@ getGolferData env = do
     case cachedMaybe of
         Nothing -> do
             logger env INFO "no cache received - hitting api"
-            initReq <- parseRequest $ gldApiHost env
+            initReq <- parseRequest $ gldApiHost env ++ "/world-rankings"
             let req = initReq
                     { method = "GET"
                     , requestHeaders = 

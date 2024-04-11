@@ -3,3 +3,6 @@ develop:
 
 connect-db-local: 
 	psql -h localhost -p 5432 -U postgres 
+
+db-up:
+	docker start majorplayer

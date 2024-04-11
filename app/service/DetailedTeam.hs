@@ -34,7 +34,7 @@ buildTeamDetailsDTO env ts us gs = map toTeamDto ts
                         Just uid -> Team.userId t == uid
                     ) us
                 user = case userMaybe of
-                    Nothing -> error "could not find user with id" -- ++ show (Team.userId t)
+                    Nothing -> error "could not find user with id"
                     Just u' -> u'
                 teamGolfers = filter (\g -> elem (Golfer.id g) (golferIds t)) gs
             in 
