@@ -5,7 +5,7 @@ module LoginController
 ) where
 import Golfer (Golfer, filterGolfersById)
 import Env (Env (cookieKey, logger), LogLevel (DEBUG, ERROR))
-import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam)
+import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, delete)
 import Player (Player(Player, user, selected))
 import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie)
 import Utils (getUserForSession)
@@ -68,6 +68,6 @@ loginRoutes env allGolfers = do
         t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
         html $ TL.fromStrict t
 
-    get "logout" $ do
+    post "/logout" $ do
         _ <- deleteCookie (cookieKey env)
         redirect "/"

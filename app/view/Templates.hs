@@ -122,8 +122,5 @@ buildLeaguesPartial env uid ls =
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
     in buildTemplate env leaguesPartial (LeaguesPartial admin nonAdmin)
 
---buildLeaguePartial :: Env -> [Team] -> [Golfer] -> IO Text
---buildLeaguePartial env ts gs = buildTemplate env leaguePartial (Teams { teams = ts })
-
 buildLeaguePartial :: Env -> [TeamDetailedDTO] -> IO Text
 buildLeaguePartial env t = buildTemplate env leaguePartial (Teams { teams = t }) 
