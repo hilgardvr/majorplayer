@@ -1,14 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module GolfLeaderboardDataApiClient
+module GLDApiClient
 ( getGolferRankings
 ) where
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), decode)
+import Data.Aeson (decode)
 import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
 import Data.ByteString.UTF8 (fromString)
 import Data.UUID (UUID)
 import qualified Data.ByteString.Lazy.UTF8 as BSL
-import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, diffLocalTime)
+import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, diffLocalTime, NominalDiffTime)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
@@ -18,25 +18,13 @@ import Network.HTTP.Client.Conduit (Request(method, requestHeaders), parseReques
 import Repo (getQuery)
 import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
+import GLDApiRankings (RankingApiResponse (results), ApiRankings (rankings))
+import GLDApiGolfer (toGolfer)
 
+type TableName = String
 
-data ApiRankings = ApiRankings
-    { rankings :: [Golfer]
-    } deriving (Show)
-
-instance FromJSON ApiRankings where
-    parseJSON = withObject "ApiRankings" $ \v -> ApiRankings
-        <$> v .: "rankings"
-
-data RankingApiResponse = RankingApiResponse
-    { meta :: !ApiMeta
-    , results :: !ApiRankings
-    } deriving (Show)
-
-instance FromJSON RankingApiResponse where
-    parseJSON = withObject "RankingApiResponse"  $ \v -> RankingApiResponse
-        <$> v .: "meta"
-        <*> v .: "results"
+rawGolferRankingTable :: TableName
+rawGolferRankingTable = "golfer_rankings"
 
 data RawApiResponse = RawApiResponse 
     { responseId :: !(Maybe UUID)
@@ -44,25 +32,19 @@ data RawApiResponse = RawApiResponse
     , createdAt :: !LocalTime
     }
 
-instance FromJSON Golfer where
-    parseJSON = withObject "Golfer"  $ \v -> Golfer
-        <$> v .: "player_id"
-        <*> v .: "position"
-        <*> v .: "player_name"
-
 instance ToRow RawApiResponse where
     toRow (RawApiResponse _ rr _) = [toField rr]
 
 instance FromRow RawApiResponse where
     fromRow = RawApiResponse <$> field <*> field <*> field
 
-getCachedRankingResponse :: Env -> IO (Maybe RawApiResponse)
-getCachedRankingResponse env = do
-    res <- try $ query_ (conn env) (getQuery "select * from golfer_rankings order by created_at desc limit 1") :: IO (Either SomeException [RawApiResponse])
+getCachedRankingResponse :: Env -> TableName -> NominalDiffTime -> IO (Maybe RawApiResponse)
+getCachedRankingResponse env tn timeout = do
+    res <- try $ query_ (conn env) (getQuery $ "select * from " ++ tn ++ " order by created_at desc limit 1") :: IO (Either SomeException [RawApiResponse])
     case res of
         Left e -> do
-            logger env ERROR $ "failed to insert cache" ++ show e
-            error "failed to insert cache"
+            logger env ERROR $ "failed to get cache for " ++ tn ++ " - error: " ++ show e
+            error $ "failed to get cache for " ++ tn ++ " - error: " ++ show e
         Right r -> 
             if null r
             then return Nothing
@@ -70,13 +52,13 @@ getCachedRankingResponse env = do
                 nowUtc <- getCurrentTime
                 let nowUtcLocal = utcToLocalTime utc nowUtc
                     diff = diffLocalTime nowUtcLocal $ createdAt $ head r
-                if diff > 604800
+                if diff > timeout
                 then return Nothing
                 else return $ Just $ head r
 
-getGolferData :: Env -> IO RawApiResponse
-getGolferData env = do
-    cachedMaybe <- getCachedRankingResponse env 
+getGolferApiData :: Env -> IO RawApiResponse
+getGolferApiData env = do
+    cachedMaybe <- getCachedRankingResponse env rawGolferRankingTable 604800
     case cachedMaybe of
         Nothing -> do
             logger env INFO "no cache received - hitting api"
@@ -89,7 +71,7 @@ getGolferData env = do
             res <- httpBS req
             logger env DEBUG $ "RAW response: " ++ show res
             let body = responseBody res
-            dbRes <- try $ query (conn env) (getQuery "insert into golfer_rankings (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
+            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ rawGolferRankingTable ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
             case dbRes of 
                 Left e -> do
                     logger env ERROR $ "error inserting golfer rankings: " ++ show e
@@ -103,7 +85,7 @@ getGolferData env = do
 
 getGolferRankings :: Env -> IO [Golfer]
 getGolferRankings env = do
-    body <- getGolferData env
+    body <- getGolferApiData env
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
     print $ take 500 $ rawResponse body
     case decoded of
@@ -112,4 +94,5 @@ getGolferRankings env = do
             error "failded to decode api golfers"
         Just gs -> do
             logger env INFO "parsed json success"
-            return $ rankings . results $ gs
+            let apiGolfers = rankings . results $ gs
+            return $ map toGolfer apiGolfers

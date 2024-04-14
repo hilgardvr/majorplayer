@@ -79,7 +79,10 @@ executable majorplayer
         , Utils
         , DetailedTeam
         , Fixture
-        , GolfLeaderboardDataApiClient
+        , GLDApiClient
+        , GLDApiMeta
+        , GLDApiRankings
+        , GLDApiGolfer
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -109,7 +112,7 @@ executable majorplayer
         , app/view
         , app/utils
         , app/controllers
-        , app/clients
+        , app/clients/golfleaderboarddata
 
     -- Base language which the package is written in.
     default-language: Haskell2010

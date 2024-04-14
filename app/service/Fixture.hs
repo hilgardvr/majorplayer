@@ -3,66 +3,65 @@
 module Fixture
 ( 
 ) where 
---import Network.HTTP.Client.Conduit (parseRequest, Request (method, requestHeaders), Response (responseBody), defaultPath)
---import Network.HTTP.Simple (httpBS)
---import Env (Env (logger, gldApiHost, gldApiKey, conn, season), LogLevel (DEBUG, ERROR, INFO, WARN))
---import Data.Aeson (FromJSON (parseJSON), withObject, (.:), decode, object)
---import Data.ByteString.UTF8 (fromString)
---import qualified Data.ByteString.Lazy.UTF8 as BSL
---import Data.Time (LocalTime, getCurrentTime, utcToLocalTime, utc, diffLocalTime)
---import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
---import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
---import Database.PostgreSQL.Simple.ToField (ToField(toField))
---import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
---import Control.Exception (SomeException, try)
---import Repo (getQuery)
---import GolfLeaderboardDataApiResponse (ApiMeta)
---import Database.PostgreSQL.Simple.Newtypes (Aeson(Aeson))
---import Data.UUID (UUID)
---
---type FixtureId = Int
---type TourId = Int
---type Season = Int
+import Network.HTTP.Client.Conduit (parseRequest, Request (method, requestHeaders), Response (responseBody), defaultPath)
+import Network.HTTP.Simple (httpBS)
+import Env (Env (logger, gldApiHost, gldApiKey, conn, season), LogLevel (DEBUG, ERROR, INFO, WARN))
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:), decode, object)
+import Data.ByteString.UTF8 (fromString)
+import qualified Data.ByteString.Lazy.UTF8 as BSL
+import Data.Time (LocalTime, getCurrentTime, utcToLocalTime, utc, diffLocalTime)
+import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
+import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
+import Database.PostgreSQL.Simple.ToField (ToField(toField))
+import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
+import Control.Exception (SomeException, try)
+import Repo (getQuery)
+import Database.PostgreSQL.Simple.Newtypes (Aeson(Aeson))
+import Data.UUID (UUID)
+
+type FixtureId = Int
+type TourId = Int
+type Season = Int
 --data FixtureAPIResponse = FixtureAPIResponse
 --    { meta :: ApiMeta
 --    , results :: [Fixture]
 --    }
 --
---data Fixture = Fixture
---    { id :: !FixtureId
---    , fixureType :: !String
---    , status :: !String
---    , name :: !String
---    , tourId :: !TourId
---    , country :: !String
---    , course :: !String
---    , startDate :: !LocalTime
---    , endDate :: !LocalTime
---    , season :: !Season
---    , timezone :: !String
---    , prize :: !String
---    , prizeCurrency :: !String
---    , updatedAt :: !LocalTime
---    } deriving (Show)
---
---
---instance FromJSON Fixture where
---    parseJSON = withObject "Fixture" $ \v ->  Fixture
---        <$> v .: "id"
---        <*> v .: "type"
---        <*> v .: "status"
---        <*> v .: "name"
---        <*> v .: "tour_id"
---        <*> v .: "country"
---        <*> v .: "course"
---        <*> v .: "start_date"
---        <*> v .: "end_date"
---        <*> v .: "season"
---        <*> v .: "timezone"
---        <*> v .: "prize_fund"
---        <*> v .: "fund_currency"
---        <*> v .: "updated"
---
+data Fixture = Fixture
+    { id :: !FixtureId
+    , fixureType :: !String
+    , status :: !String
+    , name :: !String
+    , tourId :: !TourId
+    , country :: !String
+    , course :: !String
+    , startDate :: !LocalTime
+    , endDate :: !LocalTime
+    , season :: !Season
+    , timezone :: !String
+    , prize :: !String
+    , prizeCurrency :: !String
+    , updatedAt :: !LocalTime
+    } deriving (Show)
+
+
+instance FromJSON Fixture where
+    parseJSON = withObject "Fixture" $ \v ->  Fixture
+        <$> v .: "id"
+        <*> v .: "type"
+        <*> v .: "status"
+        <*> v .: "name"
+        <*> v .: "tour_id"
+        <*> v .: "country"
+        <*> v .: "course"
+        <*> v .: "start_date"
+        <*> v .: "end_date"
+        <*> v .: "season"
+        <*> v .: "timezone"
+        <*> v .: "prize_fund"
+        <*> v .: "fund_currency"
+        <*> v .: "updated"
+
 --instance FromJSON FixtureAPIResponse where
 --    parseJSON = withObject "ApiResponse [Fixture]" $ \v -> FixtureAPIResponse
 --        <$> v .: "meta"
@@ -79,8 +78,8 @@ module Fixture
 --
 --instance FromRow RawFixtureApiResponse where
 --    fromRow = RawFixtureApiResponse <$> field <*> field <*> field
---
---
+
+
 --getCachedFixtureResponse :: Env -> IO (Maybe RawFixtureApiResponse)
 --getCachedFixtureResponse env = do
 --    res <- try $ query_ (conn env) (getQuery "select * from fixures order by created_at desc limit 1") :: IO (Either SomeException [RawFixtureApiResponse])
@@ -141,4 +140,4 @@ module Fixture
 --        Just fs -> do
 --            logger env INFO "parsed json success"
 --            return $ results fs
---
+

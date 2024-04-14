@@ -5,7 +5,7 @@ import TeamController (teamRoutes)
 import Web.Scotty (scotty, middleware)
 import LeagueController (leagueRoutes)
 import Env (Env, getAppEnv)
-import GolfLeaderboardDataApiClient (getGolferRankings)
+import GLDApiClient (getGolferRankings)
 
 app :: Env -> IO ()
 app env = do
