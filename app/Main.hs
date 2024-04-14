@@ -5,11 +5,12 @@ import TeamController (teamRoutes)
 import Web.Scotty (scotty, middleware)
 import LeagueController (leagueRoutes)
 import Env (Env, getAppEnv)
-import GLDApiClient (getGolferRankings)
+import GLDApiClient (getGolferRankings, getFixures)
 
 app :: Env -> IO ()
 app env = do
     allGolfers <- getGolferRankings env
+    fs <- getFixures env
     scotty 3000 $ do
         middleware logStdout
         loginRoutes env allGolfers

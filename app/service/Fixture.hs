@@ -1,31 +1,26 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Fixture
-( 
+( FixtureAPIResponse(..)
+, Fixture(..)
 ) where 
-import Network.HTTP.Client.Conduit (parseRequest, Request (method, requestHeaders), Response (responseBody), defaultPath)
-import Network.HTTP.Simple (httpBS)
-import Env (Env (logger, gldApiHost, gldApiKey, conn, season), LogLevel (DEBUG, ERROR, INFO, WARN))
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), decode, object)
-import Data.ByteString.UTF8 (fromString)
-import qualified Data.ByteString.Lazy.UTF8 as BSL
-import Data.Time (LocalTime, getCurrentTime, utcToLocalTime, utc, diffLocalTime)
-import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
-import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
-import Database.PostgreSQL.Simple.ToField (ToField(toField))
-import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
-import Control.Exception (SomeException, try)
-import Repo (getQuery)
-import Database.PostgreSQL.Simple.Newtypes (Aeson(Aeson))
-import Data.UUID (UUID)
+import Data.Time (LocalTime)
+import GLDApiMeta (ApiMeta)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 
 type FixtureId = Int
 type TourId = Int
 type Season = Int
---data FixtureAPIResponse = FixtureAPIResponse
---    { meta :: ApiMeta
---    , results :: [Fixture]
---    }
+
+data FixtureAPIResponse = FixtureAPIResponse
+    { meta :: !ApiMeta
+    , results :: ![Fixture]
+    }
+
+instance FromJSON FixtureAPIResponse where
+    parseJSON = withObject "FixtureAPIResponse" $ \v ->  FixtureAPIResponse
+        <$> v .: "meta"
+        <*> v .: "results"
 --
 data Fixture = Fixture
     { id :: !FixtureId
