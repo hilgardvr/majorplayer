@@ -19,9 +19,9 @@ import Network.HTTP.Client.Conduit (Request(method, requestHeaders), parseReques
 import Repo (getQuery)
 import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
-import GLDApiRankings (RankingApiResponse (results, RankingApiResponse), ApiRankings (rankings))
-import GLDApiGolfer (toGolfer, ApiGolfer (ApiGolfer))
-import Fixture (FixtureAPIResponse(FixtureAPIResponse, results), Fixture (Fixture))
+import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
+import GLDApiGolfer (toGolfer)
+import Fixture (FixtureAPIResponse (results), Fixture, FixtureId)
 import qualified GLDApiRankings as RankingApiResponse
 
 type TableName = String
@@ -31,6 +31,37 @@ rawGolferRankingTable = "golfer_rankings"
 
 rawFixtureTable :: TableName
 rawFixtureTable = "fixtures"
+
+rawLeaderboardTable :: TableName
+rawLeaderboardTable = "leaderboard"
+
+getFixures :: Env -> IO [Fixture]
+getFixures env = do
+    body <- getFixtureApiData env
+    let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe FixtureAPIResponse
+    --print $ take 500 $ rawResponse body
+    case decoded of
+        Nothing -> do
+            logger env ERROR "failed to decode fixures from json"
+            error "failded to decode api fixtures"
+        Just fs -> do
+            logger env INFO "parsed json fixures success"
+            return $ Fixture.results fs
+    
+
+getGolferRankings :: Env -> IO [Golfer]
+getGolferRankings env = do
+    body <- getGolferApiData env
+    let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
+    --print $ take 500 $ rawResponse body
+    case decoded of
+        Nothing -> do
+            logger env ERROR "failed to decode golfers from json"
+            error "failded to decode api golfers"
+        Just gs -> do
+            logger env INFO "parsed json success"
+            let apiGolfers = rankings . RankingApiResponse.results $ gs
+            return $ map toGolfer apiGolfers
 
 data RawApiResponse = RawApiResponse 
     { responseId :: !(Maybe UUID)
@@ -116,31 +147,30 @@ getFixtureApiData env = do
             logger env DEBUG "found fixures cache"
             return c
 
-getFixures :: Env -> IO [Fixture]
-getFixures env = do
-    body <- getFixtureApiData env
-    let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe FixtureAPIResponse
-    print $ take 500 $ rawResponse body
-    case decoded of
+getLeaderboardApiData :: Env -> FixtureId -> IO RawApiResponse
+getLeaderboardApiData env fid = do
+    cachedMaybe <- getCachedRankingResponse env rawLeaderboardTable 900
+    case cachedMaybe of
         Nothing -> do
-            logger env ERROR "failed to decode fixures from json"
-            error "failded to decode api fixtures"
-        Just fs -> do
-            logger env INFO "parsed json fixures success"
-            return $ Fixture.results fs
+            logger env INFO "no cache received - hitting api"
+            initReq <- parseRequest $ gldApiHost env ++ "/fixtures/leaderboard/" ++ show fid
+            let req = initReq
+                    { method = "GET"
+                    , requestHeaders = 
+                        [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
+                    }
+            res <- httpBS req
+            logger env DEBUG $ "RAW response: " ++ show res
+            let body = responseBody res
+            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ rawLeaderboardTable ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
+            case dbRes of 
+                Left e -> do
+                    logger env ERROR $ "error inserting leaderboard: " ++ show e
+                    error $ "error inserting leaderboard: " ++ show e
+                Right r -> do
+                    logger env DEBUG $ "inserted leaderboard - createdAt: " ++ (show . createdAt $ head r)
+                    return $ head r
+        Just c -> do
+            logger env DEBUG "found fixures cache"
+            return c
 
-    
-
-getGolferRankings :: Env -> IO [Golfer]
-getGolferRankings env = do
-    body <- getGolferApiData env
-    let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
-    print $ take 500 $ rawResponse body
-    case decoded of
-        Nothing -> do
-            logger env ERROR "failed to decode golfers from json"
-            error "failded to decode api golfers"
-        Just gs -> do
-            logger env INFO "parsed json success"
-            let apiGolfers = rankings . RankingApiResponse.results $ gs
-            return $ map toGolfer apiGolfers
