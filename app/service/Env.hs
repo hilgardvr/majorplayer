@@ -4,6 +4,7 @@ module Env
 ( LogLevel(..)
 , Env(..)
 , getAppEnv
+, Season
 ) where
 import Database.PostgreSQL.Simple (Connection)
 import Data.Time (getCurrentTime)
@@ -18,13 +19,15 @@ data LogLevel = DEBUG | INFO | WARN | ERROR deriving (Show)
 
 data AppEnv = DEV | PROD deriving (Read, Show)
 
+type Season = Int
+
 data Env = Env 
     { conn :: !Connection
     , logger :: !(LogLevel -> String -> IO ())
     , gldApiKey :: !String
     , gldApiHost :: !String
     , cookieKey :: !Text
-    , season :: !Int
+    , season :: !Season
     }
 
 devEnvFile :: FilePath

@@ -8,8 +8,8 @@ module Fixture
 ) where 
 import Data.Time (LocalTime)
 import GLDApiMeta (ApiMeta)
-import Data.Aeson (FromJSON (parseJSON), withObject, (.:), Value (Bool))
-import Data.List (find, sort, sortBy)
+import Data.Aeson (FromJSON (parseJSON), withObject, (.:) )
+import Data.List (sortBy)
 
 type FixtureId = Int
 type TourId = Int
