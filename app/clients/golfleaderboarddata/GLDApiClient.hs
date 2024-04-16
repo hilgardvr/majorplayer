@@ -3,6 +3,7 @@
 module GLDApiClient
 ( getGolferRankings
 , getFixures
+, getLeaderboard
 ) where
 import Data.Aeson (decode)
 import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
@@ -23,7 +24,9 @@ import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
 import Fixture (FixtureAPIResponse (results), Fixture, FixtureId)
 import qualified GLDApiRankings as RankingApiResponse
-import GLDApiLeaderboard (ApiLeaderboardResponse(ApiLeaderboardResponse))
+import GLDApiLeaderboard (ApiLeaderboardResponse, ApiLeaderboardGolfer)
+import qualified GLDApiLeaderboard as ApiLeaderboard
+import qualified GLDApiLeaderboard as ApiLeaderboardResponse
 
 type TableName = String
 type EndPoint = String
@@ -61,10 +64,8 @@ getFixures env = do
 
 getGolferRankings :: Env -> IO [Golfer]
 getGolferRankings env = do
-    --body <- getGolferApiData env
     body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable 604800 
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
-    --print $ take 500 $ rawResponse body
     case decoded of
         Nothing -> do
             logger env ERROR "failed to decode golfers from json"
@@ -74,18 +75,19 @@ getGolferRankings env = do
             let apiGolfers = rankings . RankingApiResponse.results $ gs
             return $ map toGolfer apiGolfers
 
-getLeaderboard :: Env -> FixtureId -> IO ()
+getLeaderboard :: Env -> FixtureId -> IO [ApiLeaderboardGolfer]
 getLeaderboard env fid = do
-    --body <- getGolferApiData env
-    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 900 
+    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 9000
+    -- print $ "raw leaderboard: " ++ take 400 (rawResponse body)
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe ApiLeaderboardResponse
-    --print $ take 500 $ rawResponse body
+    print decoded
     case decoded of
         Nothing -> do
-            logger env ERROR "failed to decode golfers from json"
-            error "failded to decode api golfers"
+            logger env ERROR "failed to decode leaderboard from json"
+            error "failded to decode api leaderboard from json"
         Just gs -> do
-            logger env INFO "parsed json success"
+            logger env INFO "parsed leaderboard json success"
+            return $ ApiLeaderboard.leaderboard $ ApiLeaderboardResponse.results gs
 
 data RawApiResponse = RawApiResponse 
     { responseId :: !(Maybe UUID)
@@ -117,59 +119,6 @@ getCachedResponse env tn timeout = do
                 then return Nothing
                 else return $ Just $ head r
 
---getGolferApiData :: Env -> IO RawApiResponse
---getGolferApiData env = do
---    cachedMaybe <- getCachedResponse env rawGolferRankingTable 604800
---    case cachedMaybe of
---        Nothing -> do
---            logger env INFO "no cache received - hitting api"
---            initReq <- parseRequest $ gldApiHost env ++ "/world-rankings"
---            let req = initReq
---                    { method = "GET"
---                    , requestHeaders = 
---                        [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
---                    }
---            res <- httpBS req
---            logger env DEBUG $ "RAW response: " ++ show res
---            let body = responseBody res
---            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ rawGolferRankingTable ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
---            case dbRes of 
---                Left e -> do
---                    logger env ERROR $ "error inserting golfer rankings: " ++ show e
---                    error $ "error inserting golfer rankings: " ++ show e
---                Right r -> do
---                    logger env DEBUG $ "inserted golfer rankings - createdAt: " ++ (show . createdAt $ head r)
---                    return $ head r
---        Just c -> do
---            logger env DEBUG "found golfer cache"
---            return c
---
---getFixtureApiData :: Env -> IO RawApiResponse
---getFixtureApiData env = do
---    cachedMaybe <- getCachedResponse env rawFixtureTable 6048000
---    case cachedMaybe of
---        Nothing -> do
---            logger env INFO "no cache received - hitting api"
---            initReq <- parseRequest $ gldApiHost env ++ "/fixtures/2/" ++ show (season env)
---            let req = initReq
---                    { method = "GET"
---                    , requestHeaders = 
---                        [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
---                    }
---            res <- httpBS req
---            logger env DEBUG $ "RAW response: " ++ show res
---            let body = responseBody res
---            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ rawFixtureTable ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
---            case dbRes of 
---                Left e -> do
---                    logger env ERROR $ "error inserting fixtures: " ++ show e
---                    error $ "error fixtures golfer rankings: " ++ show e
---                Right r -> do
---                    logger env DEBUG $ "inserted fixtures - createdAt: " ++ (show . createdAt $ head r)
---                    return $ head r
---        Just c -> do
---            logger env DEBUG "found fixures cache"
---            return c
 
 getRawApiResponse :: Env -> EndPoint -> TableName -> NominalDiffTime -> IO RawApiResponse
 getRawApiResponse env endpoint table cacheTimeout = do
@@ -198,31 +147,3 @@ getRawApiResponse env endpoint table cacheTimeout = do
             logger env DEBUG "found fixures cache"
             return c
     
-
---getLeaderboardApiData :: Env -> FixtureId -> IO RawApiResponse
---getLeaderboardApiData env fid = do
---    cachedMaybe <- getCachedResponse env rawLeaderboardTable 900
---    case cachedMaybe of
---        Nothing -> do
---            logger env INFO "no cache received - hitting api"
---            initReq <- parseRequest $ gldApiHost env ++ "/fixtures/leaderboard/" ++ show fid
---            let req = initReq
---                    { method = "GET"
---                    , requestHeaders = 
---                        [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
---                    }
---            res <- httpBS req
---            logger env DEBUG $ "RAW response: " ++ show res
---            let body = responseBody res
---            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ rawLeaderboardTable ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
---            case dbRes of 
---                Left e -> do
---                    logger env ERROR $ "error inserting leaderboard: " ++ show e
---                    error $ "error inserting leaderboard: " ++ show e
---                Right r -> do
---                    logger env DEBUG $ "inserted leaderboard - createdAt: " ++ (show . createdAt $ head r)
---                    return $ head r
---        Just c -> do
---            logger env DEBUG "found fixures cache"
---            return c
-

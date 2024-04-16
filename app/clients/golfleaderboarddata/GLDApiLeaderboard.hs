@@ -2,20 +2,40 @@
 
 module GLDApiLeaderboard
 ( ApiLeaderboardResponse(..)
+, ApiLeaderboardGolfer(..)
+, ApiLeaderboard(..)
 ) where
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import GLDApiMeta (ApiMeta(..))
-import Fixture (Fixture)
-import Data.Time (LocalTime)
+
+data ApiLeaderboardResponse = ApiLeaderboardResponse
+    { meta :: !ApiMeta
+    , results :: !ApiLeaderboard
+    } deriving (Show)
+
+instance FromJSON ApiLeaderboardResponse where
+    parseJSON = withObject "ApiLeaderboardResponse"  $ \v -> ApiLeaderboardResponse
+        <$> v .: "meta"
+        <*> v .: "results"
+
+data ApiLeaderboard = ApiLeaderboard
+    { leaderboard :: ![ApiLeaderboardGolfer]
+    --, tournament :: !Fixture
+    } deriving (Show)
+
+instance FromJSON ApiLeaderboard where
+    parseJSON = withObject "ApiLeaderboard" $ \v -> ApiLeaderboard
+        <$> v .: "leaderboard"
+        -- <*> v .: "tournament"
 
 data ApiLeaderboardGolferRounds = ApiLeaderboardGolferRounds
-    { courseNumber :: Int
-    , positionRound :: Int
-    , roundNumber :: Int
-    , roundStrokes :: Int
-    , teeTimeLocal :: String
-    , roundTotalToPar :: Int
-    , roundUpdated :: LocalTime
+    { courseNumber :: !Int
+    , positionRound :: !Int
+    , roundNumber :: !Int
+    , roundStrokes :: !Int
+    , teeTimeLocal :: !String
+    , roundTotalToPar :: !Int
+    -- , roundUpdated :: !LocalTime
     } deriving (Show)
 
 instance FromJSON ApiLeaderboardGolferRounds where
@@ -26,21 +46,21 @@ instance FromJSON ApiLeaderboardGolferRounds where
         <*> v .: "strokes"
         <*> v .: "tee_time_local"
         <*> v .: "total_to_par"
-        <*> v .: "updated"
+        -- <*> v .: "updated"
 
 data ApiLeaderboardGolfer = ApiLeaderboardGolfer
-    { country :: String
-    , currentRound :: Int
-    , firstName :: String
-    , holesPlayed :: Int
-    , lastName :: String
-    , playerId :: Int
-    , position :: Int
-    , rounds :: [ApiLeaderboardGolferRounds]
-    , status :: String
-    , strokes :: Int 
-    , totalToPar :: Int
-    , updated :: LocalTime
+    { country :: !String
+    , currentRound :: !Int
+    , firstName :: !String
+    , holesPlayed :: !Int
+    , lastName :: !String
+    , playerId :: !Int
+    , position :: !Int
+    , rounds :: ![ApiLeaderboardGolferRounds]
+    , status :: !String
+    , strokes :: !Int 
+    , totalToPar :: !Int
+    -- , updated :: !LocalTime
     } deriving (Show)
 
 instance FromJSON ApiLeaderboardGolfer where
@@ -56,25 +76,5 @@ instance FromJSON ApiLeaderboardGolfer where
         <*> v .: "status"
         <*> v .: "strokes"
         <*> v .: "total_to_par"
-        <*> v .: "updated"
-
-data ApiLeaderboard = ApiLeaderboard
-    { leaderboard :: ![ApiLeaderboardGolfer]
-    , tournament :: !Fixture
-    } deriving (Show)
-
-instance FromJSON ApiLeaderboard where
-    parseJSON = withObject "ApiLeaderboard" $ \v -> ApiLeaderboard
-        <$> v .: "leaderboard"
-        <*> v .: "tournament"
-
-data ApiLeaderboardResponse = ApiLeaderboardResponse
-    { meta :: !ApiMeta
-    , results :: !ApiLeaderboard
-    } deriving (Show)
-
-instance FromJSON ApiLeaderboardResponse where
-    parseJSON = withObject "ApiLeaderboardResponse"  $ \v -> ApiLeaderboardResponse
-        <$> v .: "meta"
-        <*> v .: "results"
+        -- <*> v .: "updated"
 
