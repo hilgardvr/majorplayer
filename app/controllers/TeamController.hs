@@ -19,9 +19,10 @@ import DraftTeam (addDraftPlayer, deleteDraftPlayer, getDraftTeam, DraftTeam (go
 import User (id)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
+import GLDApiLeaderboard (ApiLeaderboardGolfer, ApiLeaderboard (leaderboard))
 
-teamRoutes :: Env -> [Golfer] -> ScottyM ()
-teamRoutes env allGolfers = do
+teamRoutes :: Env -> [Golfer] -> [ApiLeaderboardGolfer]  -> ScottyM ()
+teamRoutes env allGolfers leaderboardGolfers = do
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
@@ -107,15 +108,15 @@ teamRoutes env allGolfers = do
 
     get "/filter-available" $ do
         c <- getCookie "majorplayer"
-        user <- liftIO $ getUserForSession env c
-        search <- param "golfer"
-        liftIO $ logger env DEBUG $ "Found golfer searched for: " ++ search
-        user' <- case user of 
+        userMaybe <- liftIO $ getUserForSession env c
+        user <- case userMaybe of 
             Nothing -> do
                 liftIO $ logger env ERROR "Could not find user to display team"
                 redirect "/"
             Just u -> pure u
-        draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user)
+        search <- param "golfer"
+        liftIO $ logger env DEBUG $ "Found golfer searched for: " ++ search
+        draftTeam <- liftIO $ getDraftTeam env (User.id user)
         let lower = map toLower
         let golfers =
                 if search == ""

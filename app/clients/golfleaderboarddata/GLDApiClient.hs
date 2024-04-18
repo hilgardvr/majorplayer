@@ -4,6 +4,7 @@ module GLDApiClient
 ( getGolferRankings
 , getFixures
 , getLeaderboard
+, ApiLeaderboardGolfer(..)
 ) where
 import Data.Aeson (decode)
 import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)

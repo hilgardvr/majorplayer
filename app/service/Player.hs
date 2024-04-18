@@ -3,10 +3,10 @@
 module Player 
 (Player(..))
 where
-import Golfer (Golfer (ranking))
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import User (User(..))
 import Validation (Validatable (validate))
+import Golfer (Golfer (ranking))
 
 data Player = Player 
     { user :: !User

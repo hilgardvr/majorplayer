@@ -18,11 +18,11 @@ app env = do
         cf = currentFixture fs nowUtcLocal
     --print cf
     leaderBoard <- getLeaderboard env (Fixture.id cf)
-    --print leaderBoard
+    print leaderBoard
     scotty 3000 $ do
         middleware logStdout
         loginRoutes env allGolfers
-        teamRoutes env allGolfers
+        teamRoutes env allGolfers leaderBoard
         leagueRoutes env allGolfers
 
 
