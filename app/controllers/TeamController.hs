@@ -19,10 +19,10 @@ import DraftTeam (addDraftPlayer, deleteDraftPlayer, getDraftTeam, DraftTeam (go
 import User (id)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
-import GLDApiLeaderboard (ApiLeaderboardGolfer, ApiLeaderboard (leaderboard))
+import DataClient (DataClientApi)
 
-teamRoutes :: Env -> [Golfer] -> [ApiLeaderboardGolfer]  -> ScottyM ()
-teamRoutes env allGolfers leaderboardGolfers = do
+teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
+teamRoutes env allGolfers client = do
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c

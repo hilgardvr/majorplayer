@@ -79,6 +79,8 @@ executable majorplayer
         , Utils
         , DetailedTeam
         , Fixture
+        , Leaderboard
+        , DataClient
         , GLDApiClient
         , GLDApiMeta
         , GLDApiRankings
@@ -113,6 +115,7 @@ executable majorplayer
         , app/view
         , app/utils
         , app/controllers
+        , app/clients
         , app/clients/golfleaderboarddata
 
     -- Base language which the package is written in.

@@ -4,10 +4,11 @@ module GLDApiLeaderboard
 ( ApiLeaderboardResponse(..)
 , ApiLeaderboardGolfer(..)
 , ApiLeaderboard(..)
+, apiToLeaderboardGolfer
 ) where
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:))
 import GLDApiMeta (ApiMeta(..))
-import Fixture (Fixture)
+import Leaderboard (LeaderboardGolfer(LeaderboardGolfer))
 
 data ApiLeaderboardResponse = ApiLeaderboardResponse
     { meta :: !ApiMeta
@@ -122,3 +123,6 @@ instance FromJSON ApiLeaderboardGolfer where
         <*> v .: "total_to_par"
         -- <*> v .: "updated"
 
+apiToLeaderboardGolfer :: ApiLeaderboardGolfer -> LeaderboardGolfer
+apiToLeaderboardGolfer (ApiLeaderboardGolfer country currentRound firstName holesPlayed lastName playerId position status strokes totalToPar) = 
+    LeaderboardGolfer country currentRound firstName holesPlayed lastName playerId position status strokes totalToPar

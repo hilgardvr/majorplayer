@@ -1,10 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module GLDApiClient
-( getGolferRankings
-, getFixures
-, getLeaderboard
-, ApiLeaderboardGolfer(..)
+( getGLDClient
 ) where
 import Data.Aeson (decode)
 import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
@@ -25,9 +22,28 @@ import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
 import Fixture (FixtureAPIResponse (results), Fixture, FixtureId)
 import qualified GLDApiRankings as RankingApiResponse
-import GLDApiLeaderboard (ApiLeaderboardResponse, ApiLeaderboardGolfer)
-import qualified GLDApiLeaderboard as ApiLeaderboard
-import qualified GLDApiLeaderboard as ApiLeaderboardResponse
+import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), ApiLeaderboardGolfer(..), apiToLeaderboardGolfer)
+import Leaderboard (LeaderboardGolfer)
+import DataClient (DataClientApi(..))
+
+data GLDApiClient = GLDApiClient
+    { gldRankings :: IO [Golfer]
+    , gldFixtures :: IO [Fixture]
+    , gldLeaderboard :: FixtureId -> IO [LeaderboardGolfer]
+    }
+
+instance DataClientApi GLDApiClient where
+    getGolferRankings (GLDApiClient r _ _) = r
+    getFixures (GLDApiClient _ f _) = f
+    getFixtureLeaderboard (GLDApiClient _ _ l) fid = l fid
+
+getGLDClient :: Env -> GLDApiClient
+getGLDClient env =
+    GLDApiClient 
+        { gldRankings = getGLDGolferRankings env
+        , gldFixtures = getGLDFixures env
+        , gldLeaderboard = getGLDLeaderboard env
+        }
 
 type TableName = String
 type EndPoint = String
@@ -50,8 +66,8 @@ rawLeaderboardTable = "leaderboard"
 leaderboardEndpoint :: FixtureId -> EndPoint
 leaderboardEndpoint fid = "/leaderboard/" ++ show fid
 
-getFixures :: Env -> IO [Fixture]
-getFixures env = do
+getGLDFixures :: Env -> IO [Fixture]
+getGLDFixures env = do
     body <- getRawApiResponse env (fixturesEndpoint (season env)) rawFixtureTable 604800 
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe FixtureAPIResponse
     case decoded of
@@ -63,21 +79,21 @@ getFixures env = do
             return $ Fixture.results fs
     
 
-getGolferRankings :: Env -> IO [Golfer]
-getGolferRankings env = do
+getGLDGolferRankings :: Env -> IO [Golfer]
+getGLDGolferRankings env = do
     body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable 604800 
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
     case decoded of
         Nothing -> do
-            logger env ERROR "failed to decode golfers from json"
+            logger env ERROR "failed to decode golfers rankings from json"
             error "failded to decode api golfers"
         Just gs -> do
-            logger env INFO "parsed json success"
+            logger env INFO "parsed golfers rankings json success"
             let apiGolfers = rankings . RankingApiResponse.results $ gs
             return $ map toGolfer apiGolfers
 
-getLeaderboard :: Env -> FixtureId -> IO [ApiLeaderboardGolfer]
-getLeaderboard env fid = do
+getGLDLeaderboard :: Env -> FixtureId -> IO [LeaderboardGolfer]
+getGLDLeaderboard env fid = do
     body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 9000
     -- print $ "raw leaderboard: " ++ take 400 (rawResponse body)
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe ApiLeaderboardResponse
@@ -88,7 +104,8 @@ getLeaderboard env fid = do
             error "failded to decode api leaderboard from json"
         Just gs -> do
             logger env INFO "parsed leaderboard json success"
-            return $ ApiLeaderboard.leaderboard $ ApiLeaderboardResponse.results gs
+            let apiLeaderboard = GLDApiLeaderboard.leaderboard $ GLDApiLeaderboard.results gs
+            return $ map apiToLeaderboardGolfer apiLeaderboard
 
 data RawApiResponse = RawApiResponse 
     { responseId :: !(Maybe UUID)
