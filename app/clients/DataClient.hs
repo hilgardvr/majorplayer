@@ -8,5 +8,6 @@ import Fixture (Fixture, FixtureId)
 class DataClientApi a where
     getGolferRankings :: a -> IO [Golfer]
     getFixures :: a -> IO [Fixture]
+    getCurrentFixture :: a -> IO Fixture
     getFixtureLeaderboard :: a -> FixtureId -> IO [LeaderboardGolfer]
 

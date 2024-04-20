@@ -20,7 +20,7 @@ import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
 import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
-import Fixture (FixtureAPIResponse (results), Fixture, FixtureId)
+import Fixture (FixtureAPIResponse (results), Fixture, FixtureId, currentFixture)
 import qualified GLDApiRankings as RankingApiResponse
 import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), ApiLeaderboardGolfer(..), apiToLeaderboardGolfer)
 import Leaderboard (LeaderboardGolfer)
@@ -30,12 +30,14 @@ data GLDApiClient = GLDApiClient
     { gldRankings :: IO [Golfer]
     , gldFixtures :: IO [Fixture]
     , gldLeaderboard :: FixtureId -> IO [LeaderboardGolfer]
+    , gldCurrentFixture :: IO Fixture
     }
 
 instance DataClientApi GLDApiClient where
-    getGolferRankings (GLDApiClient r _ _) = r
-    getFixures (GLDApiClient _ f _) = f
-    getFixtureLeaderboard (GLDApiClient _ _ l) fid = l fid
+    getGolferRankings (GLDApiClient r _ _ _) = r
+    getFixures (GLDApiClient _ f _ _) = f
+    getFixtureLeaderboard (GLDApiClient _ _ l _) = l
+    getCurrentFixture (GLDApiClient _ _ _ c) = c
 
 getGLDClient :: Env -> GLDApiClient
 getGLDClient env =
@@ -43,6 +45,7 @@ getGLDClient env =
         { gldRankings = getGLDGolferRankings env
         , gldFixtures = getGLDFixures env
         , gldLeaderboard = getGLDLeaderboard env
+        , gldCurrentFixture = getGLDCurrentFixure env
         }
 
 type TableName = String
@@ -65,6 +68,13 @@ rawLeaderboardTable = "leaderboard"
 
 leaderboardEndpoint :: FixtureId -> EndPoint
 leaderboardEndpoint fid = "/leaderboard/" ++ show fid
+
+getGLDCurrentFixure :: Env -> IO Fixture
+getGLDCurrentFixure env = do
+    fs <- getGLDFixures env
+    nowUtc <- getCurrentTime
+    let nowUtcLocal = utcToLocalTime utc nowUtc
+    return $ currentFixture fs nowUtcLocal
 
 getGLDFixures :: Env -> IO [Fixture]
 getGLDFixures env = do

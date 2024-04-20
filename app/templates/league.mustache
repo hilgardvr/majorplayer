@@ -1,15 +1,17 @@
 <div>
     {{#teams}}
-        <p>{{user.email}}</p>
+        <p>{{user.email}} - Total score: {{totalRank}}</p>
         <table>
             <tr>
                 <th>Name</th>
-                <th>Ranking</th>
+                <th>World Ranking</th>
+                <th>Current Position</th>
             </tr>
             {{#teamGolfers}}
                 <tr>
                     <td>{{name}}</td>
                     <td>{{ranking}}</td>
+                    <td>{{position}}</td>
                 </tr>
             {{/teamGolfers}}
         </table>

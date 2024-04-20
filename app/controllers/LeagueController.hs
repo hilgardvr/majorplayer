@@ -17,9 +17,12 @@ import qualified Data.UUID as UUID
 import Golfer (Golfer)
 import Team (getTeamsForUsers)
 import DetailedTeam (buildTeamDetailsDTO)
+import DataClient (DataClientApi (getCurrentFixture, getFixtureLeaderboard))
+import GLDApiLeaderboard (ApiLeaderboard(leaderboard))
+import qualified Fixture
 
-leagueRoutes :: Env -> [Golfer] -> ScottyM ()
-leagueRoutes env allGolfers = do
+leagueRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
+leagueRoutes env allGolfers client = do
     get "/leagues" $ do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
@@ -59,7 +62,9 @@ leagueRoutes env allGolfers = do
         userIds <- liftIO $ getUserIdsForLeague env lid
         teams <- liftIO $ getTeamsForUsers env userIds
         users <- liftIO $ getUsersByIds env userIds
-        let teamDetails = buildTeamDetailsDTO env teams users allGolfers
+        fixture <- liftIO $ getCurrentFixture client
+        leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id fixture)
+        let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
         t <- liftIO $ buildLeaguePartial env teamDetails
         html $ TL.fromStrict t
 
