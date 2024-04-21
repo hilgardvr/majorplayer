@@ -65,7 +65,7 @@ leagueRoutes env allGolfers client = do
         fixture <- liftIO $ getCurrentFixture client
         leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id fixture)
         let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
-        t <- liftIO $ buildLeaguePartial env teamDetails
+        t <- liftIO $ buildLeaguePartial env fixture teamDetails
         html $ TL.fromStrict t
 
     post "/create-league" $ do

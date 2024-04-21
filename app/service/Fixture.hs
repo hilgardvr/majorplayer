@@ -10,6 +10,7 @@ import Data.Time (LocalTime)
 import GLDApiMeta (ApiMeta)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:) )
 import Data.List (sortBy)
+import Text.Mustache (ToMustache (toMustache), object, (~>))
 
 type FixtureId = Int
 type TourId = Int
@@ -59,6 +60,15 @@ instance FromJSON Fixture where
         <*> v .: "prize_fund"
         <*> v .: "fund_currency"
         <*> v .: "updated"
+
+instance ToMustache Fixture where
+    toMustache (Fixture id fixtureType status name tourId country course startDate endDate season timezone prize prizeCurrency updatedAt) = object
+        [ "status" ~> status
+        , "name" ~> name
+        , "course" ~> course
+        , "prize" ~> prize
+        , "prizeCurrency" ~> prizeCurrency
+        ]
 
 currentFixture :: [Fixture] -> LocalTime -> Fixture
 currentFixture fs now =  

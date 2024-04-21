@@ -18,15 +18,19 @@ data TeamGolfer = TeamGolfer
     , ranking :: !Ranking
     , name :: !GolferName
     , position :: !Int
+    , toPar :: !String
+    , status :: !String
     } deriving (Show)
 
 instance ToMustache TeamGolfer where
-    toMustache (TeamGolfer id rank name pos) =
+    toMustache (TeamGolfer id rank name pos toPar status) =
         object 
             [ "id" ~> id
             , "ranking" ~> rank
             , "name" ~> name
             , "position" ~> pos
+            , "toPar" ~> toPar
+            , "status" ~> status
             ]
 
 data TeamDetailedDTO = TeamDetailedDTO
@@ -59,10 +63,22 @@ buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams
                 golfers = filter (\g -> elem (Golfer.id g) (golferIds team)) gs
                 teamGolfers :: [TeamGolfer]
                 teamGolfers = map (\g ->
-                        let pos = find (\e -> playerId e == Golfer.id g) lg
-                        in case pos of 
-                            Nothing -> 100 -- error $ "Could not find leaderboard golfer " ++ show (Golfer.id g)
-                            Just p -> TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) (LeaderboardGolfer.position p)
+                        let leaderboardGolfer = find (\e -> playerId e == Golfer.id g) lg
+                        in case leaderboardGolfer of 
+                            Nothing -> 
+                                let pos = 100
+                                    toPar = "N/A"
+                                    status = "N/A"
+                                in
+                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) 100 toPar status
+                                -- error $ "Could not find leaderboard golfer " ++ show (Golfer.id g)
+                            Just p -> 
+                                let roundStatus = LeaderboardGolfer.status p
+                                    status = if roundStatus == "complete"
+                                    then "Round: " ++ show (LeaderboardGolfer.currentRound p) ++ " Status: " ++ LeaderboardGolfer.status p
+                                    else "Round: " ++ (show $ LeaderboardGolfer.currentRound p) ++ " - Holes played: " ++ (show $ LeaderboardGolfer.holesPlayed p)
+                                in
+                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) (LeaderboardGolfer.position p) (show $ LeaderboardGolfer.totalToPar p) status
                     ) golfers
 
                 sortedTeamGolfers = sortBy (\a b -> compare (position a) (position b)) teamGolfers

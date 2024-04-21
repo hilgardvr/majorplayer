@@ -1,17 +1,24 @@
 <div>
+    {{#fixture}}
+        <p>{{name}} - {{course}} - {{prizeCurrency}} {{prize}}</p>
+    {{/fixture}}
     {{#teams}}
         <p>{{user.email}} - Total score: {{totalRank}}</p>
         <table>
             <tr>
                 <th>Name</th>
                 <th>World Ranking</th>
+                <th>Total To Par</th>
                 <th>Current Position</th>
+                <th>Status</th>
             </tr>
             {{#teamGolfers}}
                 <tr>
                     <td>{{name}}</td>
                     <td>{{ranking}}</td>
+                    <td>{{toPar}}</td>
                     <td>{{position}}</td>
+                    <td>{{status}}</td>
                 </tr>
             {{/teamGolfers}}
         </table>

@@ -2,9 +2,10 @@
     {{#adminLeagues}}
         <div>
         <button
-                hx-get="/league/{{ id }}"
-                hx-target="#home"
-                ><b>{{ name }}</b>        
+            hx-get="/league/{{ id }}"
+            hx-target="#home"
+            hx-push-url="true"
+            ><b>{{ name }}</b>        
         </button>
             Admin - new member join passcode <b>{{passcode}}</b>
         </div>
@@ -13,7 +14,8 @@
         <button
             hx-get="/league/{{ id }}"
             hx-target="#home"
-                ><b>{{ name }}</b>
+            hx-push-url="true"
+        ><b>{{ name }}</b>
         </button>
     {{/leagues}}
     <form>
