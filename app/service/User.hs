@@ -19,32 +19,48 @@ import Control.Exception (try, SomeException)
 
 type Email = String
 type UserId = UUID
+type UserName = String
+type TeamName = String
 
 data User = User
     { id :: !(Maybe UserId)
     , email :: !Email
+    , name :: !(Maybe UserName)
+    , teamName :: !(Maybe TeamName)
     } deriving (Show)
 
 instance ToRow User where
-    toRow (User i e) = [toField e]
+    toRow (User _ email name teamName) = [toField email, toField name, toField teamName]
 
 instance FromRow User where
-    fromRow = User <$> field <*> field
+    fromRow = User <$> field <*> field <*> field <*> field
 
 instance ToMustache User where
-    toMustache (User i e) = object
-        [ "email" ~> e ]
-
-instance ToMustache UUID where
-    toMustache = toMustache . show 
+    toMustache (User i email name teamName) = object
+        [ "email" ~> email
+        , "name" ~> name
+        , "teamName" ~> teamName
+        ]
 
 createUser :: Env -> Email -> IO User
 createUser env email = do
     logger env DEBUG $ "creating user for " ++ email
-    let u = User Nothing email
-    user <- returning (conn env) (getQuery "insert into users(email) values (?) returning *") [u]
+    let u = User Nothing email Nothing Nothing
+    user <- returning (conn env) (getQuery "insert into users(email, name, team_name) values (?, ?, ?) returning *") [u]
     logger env DEBUG $ "created user "  ++ show user
     return $ head user
+
+updateUserDetails :: Env -> UserId -> UserName -> TeamName -> IO User
+updateUserDetails env userId userName teamName = do
+    logger env DEBUG $ "updating user for " ++ show userId
+    user <- try $ query (conn env) (getQuery "update users set name = ?, team_name = ? where id = ? returning *") (userName, teamName, userId) :: IO (Either SomeException [User])
+    case user of
+        Left e -> do
+            logger env ERROR $ "error updating user details: " ++ show e
+            error (show e)
+        Right u -> do
+            logger env DEBUG $ "updated user "  ++ (show $ head u)
+            return $ head u
 
 getUserByEmail :: Env -> Email -> IO (Maybe User)
 getUserByEmail env email = do

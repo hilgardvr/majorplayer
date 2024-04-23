@@ -43,6 +43,7 @@ getUserForSession env cookie = do
 getDraftTeamGolfers :: Env -> [Golfer] -> User -> IO ([Golfer], [Golfer])
 getDraftTeamGolfers env g u = do
     draftTeam <- getDraftTeam env (User.id u)
+    logger env DEBUG $ show  draftTeam
     let draftTeamIds = map DraftTeam.golferId draftTeam
         (selected, notSelected) = partition (\e -> (Golfer.id e) `elem` draftTeamIds) g
     return (selected, notSelected)
