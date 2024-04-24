@@ -6,20 +6,12 @@ import Web.Scotty (scotty, middleware)
 import LeagueController (leagueRoutes)
 import Env (Env, getAppEnv)
 import GLDApiClient (getGLDClient)
---import Fixture (currentFixture, Fixture (id))
---import Data.Time (getCurrentTime, utc, utcToLocalTime)
-import DataClient (DataClientApi(getGolferRankings, getFixures, getFixtureLeaderboard))
+import DataClient (DataClientApi(getGolferRankings))
 
 app :: Env -> IO ()
 app env = do
     let client = getGLDClient env
     allGolfers <- getGolferRankings client
-    --fs <- getFixures client
-    --nowUtc <- getCurrentTime
-    --let nowUtcLocal = utcToLocalTime utc nowUtc
-    --    cf = currentFixture fs nowUtcLocal
-    --leaderBoard <- getFixtureLeaderboard client (Fixture.id cf)
-    --print leaderBoard
     scotty 3000 $ do
         middleware logStdout
         loginRoutes env allGolfers

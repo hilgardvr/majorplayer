@@ -23,6 +23,19 @@ import DataClient (DataClientApi)
 
 teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 teamRoutes env allGolfers client = do
+
+    post "/save-user-details" $ do
+        c <- getCookie (cookieKey env)
+        user <- liftIO $ getUserForSession env c
+        u <- case user of
+                Nothing -> redirect "/"
+                Just u -> pure u
+        userName <- param "user-name"
+        teamName <- param "team-name"
+        liftIO $ putStrLn userName
+        liftIO $ putStrLn teamName
+        redirect "/"
+
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c

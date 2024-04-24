@@ -13,11 +13,11 @@ module Templates
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
 import Data.Text (Text)
 import Text.Mustache.Compile (TemplateCache, cacheFromList)
-import Player (Player)
+import Player (Player (user))
 import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
-import User (UserId)
+import User (UserId, User (name))
 import League (League (adminId))
 import Data.List
 import DetailedTeam (TeamDetailedDTO)
@@ -31,6 +31,9 @@ index = "index.mustache"
 
 selectTeamPartial :: FilePath
 selectTeamPartial = "select-team.mustache"
+
+userDetailsPartial :: FilePath
+userDetailsPartial = "user-details.mustache"
 
 team :: FilePath
 team = "team.mustache"
@@ -112,7 +115,13 @@ buildIndex :: Env -> UserTemplate -> IO Text
 buildIndex env = buildTemplate env index
 
 buildSelectTeamPartial :: Env -> UserTemplate -> IO Text
-buildSelectTeamPartial env = buildTemplate env selectTeamPartial
+buildSelectTeamPartial env userTemplate =
+    case player userTemplate of
+        Nothing -> error "Expected a user"
+        Just p -> 
+            case User.name $ Player.user p of
+                Nothing -> buildTemplate env userDetailsPartial userTemplate
+                Just _ -> buildTemplate env selectTeamPartial userTemplate
 
 buildTeamPage :: Env -> Player -> IO Text
 buildTeamPage env = buildTemplate env team 
