@@ -6,6 +6,7 @@ module User
 , getUserById
 , getUserByEmail
 , getUsersByIds
+, updateUserDetails
 ) where
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Database.PostgreSQL.Simple (Connection, ToRow, FromRow, returning, query, Only (Only), In (In))

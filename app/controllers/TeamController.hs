@@ -16,7 +16,7 @@ import Validation (Validatable(validate))
 import Golfer (Golfer (name, id), GolferId)
 import Player (Player(Player))
 import DraftTeam (addDraftPlayer, deleteDraftPlayer, getDraftTeam, DraftTeam (golferId))
-import User (id)
+import User (id, updateUserDetails)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
 import DataClient (DataClientApi)
@@ -28,13 +28,19 @@ teamRoutes env allGolfers client = do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
         u <- case user of
-                Nothing -> redirect "/"
-                Just u -> pure u
-        userName <- param "user-name"
-        teamName <- param "team-name"
-        liftIO $ putStrLn userName
-        liftIO $ putStrLn teamName
-        redirect "/"
+            Nothing -> redirect "/"
+            Just u -> pure u
+        case (User.id u) of
+            Nothing -> do
+                liftIO $ logger env ERROR $ "Expected to find a user with id for session: " ++ show c
+                error $ "Expected to find a user with id for session: " ++ show c
+            Just uid -> do
+                userName <- param "user-name"
+                teamName <- param "team-name"
+                liftIO $ updateUserDetails env uid userName teamName
+                liftIO $ putStrLn userName
+                liftIO $ putStrLn teamName
+                redirect "/change-team"
 
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
