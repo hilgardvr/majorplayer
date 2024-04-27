@@ -34,8 +34,8 @@ instance FromRow DraftTeam where
     fromRow = DraftTeam <$> field <*> field <*> field
 
 instance Validatable [DraftTeam] where
-    validate dt = 
-        let uniq = Set.fromList dt
+    validate draftTeam =
+        let uniq = Set.fromList draftTeam
         in 
             if length uniq == 8
             then Nothing

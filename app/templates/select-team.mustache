@@ -2,14 +2,17 @@
 <div>
     <div>
         {{^validationError}}
-            <button 
-                hx-post="/save-team"
-                hx-target="#home"
-            >Save Team</button>
+            <p>
+                <button 
+                    hx-post="/save-team"
+                    hx-target="#home"
+                    style="color:green;"
+                >Save Team</button>
+            </p>
             <br/>
         {{/validationError}}
         {{#validationError}}
-            <h4>{{.}}</h4>
+            <h4 style="color:red;">{{.}}</h4>
         {{/validationError}}
     </div>
     {{#player.selected}}

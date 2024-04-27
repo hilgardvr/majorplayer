@@ -28,6 +28,9 @@ data Env = Env
     , gldApiHost :: !String
     , cookieKey :: !Text
     , season :: !Season
+    , emailHost :: !String
+    , emailUsername :: !String
+    , emailPassword :: !String
     }
 
 devEnvFile :: FilePath
@@ -84,6 +87,13 @@ getAppEnv = do
     apiKey <- getEnv "GLD_API_KEY"
     print apiKey
     season <- getEnv "SEASON"
+    print season
+    emailHost <- getEnv "EMAIL_HOST"
+    print emailHost
+    emailUsername <- getEnv "EMAIL_USERNAME"
+    print emailUsername
+    emailPassword <- getEnv "EMAIL_PASSWORD"
+    print emailPassword
     conn <- R.connect dbHost (read dbPort) dbUser dbPass
     return Env 
         { conn = conn
@@ -92,4 +102,7 @@ getAppEnv = do
         , gldApiHost = apiHost
         , cookieKey = "majorplayer"
         , season = read season
+        , emailHost = emailHost
+        , emailUsername = emailUsername
+        , emailPassword = emailPassword
         }

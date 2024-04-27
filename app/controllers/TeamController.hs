@@ -40,7 +40,7 @@ teamRoutes env allGolfers client = do
                 liftIO $ updateUserDetails env uid userName teamName
                 liftIO $ putStrLn userName
                 liftIO $ putStrLn teamName
-                redirect "/change-team"
+                redirect "/"
 
     get "/change-team" $ do
         c <- getCookie (cookieKey env)

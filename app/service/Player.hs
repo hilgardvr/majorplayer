@@ -5,7 +5,7 @@ module Player
 where
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import User (User(..))
-import Validation (Validatable (validate))
+import Validation (Validatable (validate), ValidationError)
 import Golfer (Golfer (ranking))
 
 data Player = Player 
@@ -24,6 +24,9 @@ instance ToMustache Player where
 instance Validatable Player where
     validate (Player u s) = 
         let selectedRanks = map ranking s
+            topTen = filter (\e -> e <= 10) selectedRanks
         in if length selectedRanks /= 8
             then Just "You need to select 8 players"
-            else Nothing
+            else if length topTen > 4
+                 then Just "You can only select 4 top ten ranked golfers"
+                 else Nothing

@@ -4,8 +4,8 @@ module LoginController
 ( loginRoutes
 ) where
 import Golfer (Golfer, filterGolfersById)
-import Env (Env (cookieKey, logger), LogLevel (DEBUG, ERROR))
-import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, delete)
+import Env (Env (cookieKey, logger, emailPassword, emailUsername, emailHost), LogLevel (DEBUG, ERROR))
+import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam)
 import Player (Player(Player, user, selected))
 import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie)
 import Utils (getUserForSession)
@@ -18,6 +18,7 @@ import qualified Data.UUID as UUID
 import Data.Text (pack)
 import Team (getTeam, Team (golferIds))
 import Validation (Validatable(validate))
+import Network.Mail.SMTP (Address(Address), simpleMail, plainTextPart, sendMailWithLoginTLS)
 
 loginRoutes :: Env -> [Golfer] -> ScottyM ()
 loginRoutes env allGolfers = do
@@ -32,6 +33,11 @@ loginRoutes env allGolfers = do
             
     post "/login" $ do
         email <- formParam "email" :: ActionM String
+        let fromAddress = Address (Just (pack "MajorPlayer")) (pack "no-reply@majorplayer.com")
+            toAddress = Address Nothing (pack email)
+            mailBody = plainTextPart (TL.pack "some code todo")
+            mail = simpleMail fromAddress [toAddress] [] [] (pack "MajorPlayer Login Code") [mailBody]
+        _ <- liftIO $ sendMailWithLoginTLS (emailHost env) (emailUsername env) (emailPassword env) mail
         existingUser <- liftIO $ getUserByEmail env email
         liftIO $ logger env DEBUG $ "existingUser : " ++ show existingUser
         user <- case existingUser of
@@ -71,3 +77,5 @@ loginRoutes env allGolfers = do
     post "/logout" $ do
         _ <- deleteCookie (cookieKey env)
         redirect "/"
+
+-- sendLoginCodeEmail :: Env -> 
