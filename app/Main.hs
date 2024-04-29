@@ -14,9 +14,9 @@ app env = do
     allGolfers <- getGolferRankings client
     scotty 3000 $ do
         middleware logStdout
-        loginRoutes env allGolfers
         teamRoutes env allGolfers client
         leagueRoutes env allGolfers client
+        loginRoutes env allGolfers
 
 
 main :: IO ()

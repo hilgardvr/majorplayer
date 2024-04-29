@@ -78,7 +78,7 @@ getGLDCurrentFixure env = do
 
 getGLDFixures :: Env -> IO [Fixture]
 getGLDFixures env = do
-    body <- getRawApiResponse env (fixturesEndpoint (season env)) rawFixtureTable 604800 
+    body <- getRawApiResponse env (fixturesEndpoint (season env)) rawFixtureTable 86400 -- 24h
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe FixtureAPIResponse
     case decoded of
         Nothing -> do
@@ -91,7 +91,7 @@ getGLDFixures env = do
 
 getGLDGolferRankings :: Env -> IO [Golfer]
 getGLDGolferRankings env = do
-    body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable 604800 
+    body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable 86400  -- 24h
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
     case decoded of
         Nothing -> do
@@ -104,7 +104,7 @@ getGLDGolferRankings env = do
 
 getGLDLeaderboard :: Env -> FixtureId -> IO [LeaderboardGolfer]
 getGLDLeaderboard env fid = do
-    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 9000
+    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 900 -- 15min
     -- print $ "raw leaderboard: " ++ take 400 (rawResponse body)
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe ApiLeaderboardResponse
     print decoded

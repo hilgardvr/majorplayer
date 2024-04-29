@@ -3,10 +3,13 @@ module User
 ( User(..)
 , createUser
 , UserId
+, Email
+, LoginCode
 , getUserById
 , getUserByEmail
 , getUsersByIds
 , updateUserDetails
+, updateUserLoginCode
 ) where
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Database.PostgreSQL.Simple (Connection, ToRow, FromRow, returning, query, Only (Only), In (In))
@@ -22,22 +25,24 @@ type Email = String
 type UserId = UUID
 type UserName = String
 type TeamName = String
+type LoginCode = String
 
 data User = User
     { id :: !(Maybe UserId)
     , email :: !Email
     , name :: !(Maybe UserName)
     , teamName :: !(Maybe TeamName)
+    , loginCode :: !(Maybe LoginCode)
     } deriving (Show)
 
 instance ToRow User where
-    toRow (User _ email name teamName) = [toField email, toField name, toField teamName]
+    toRow (User _ email name teamName loginCode) = [toField email, toField name, toField teamName, toField loginCode]
 
 instance FromRow User where
-    fromRow = User <$> field <*> field <*> field <*> field
+    fromRow = User <$> field <*> field <*> field <*> field <*> field
 
 instance ToMustache User where
-    toMustache (User i email name teamName) = object
+    toMustache (User i email name teamName loginCode) = object
         [ "email" ~> email
         , "name" ~> name
         , "teamName" ~> teamName
@@ -46,10 +51,15 @@ instance ToMustache User where
 createUser :: Env -> Email -> IO User
 createUser env email = do
     logger env DEBUG $ "creating user for " ++ email
-    let u = User Nothing email Nothing Nothing
-    user <- returning (conn env) (getQuery "insert into users(email, name, team_name) values (?, ?, ?) returning *") [u]
-    logger env DEBUG $ "created user "  ++ show user
-    return $ head user
+    let u = User Nothing email Nothing Nothing Nothing
+    user <- try $ returning (conn env) (getQuery "insert into users(email, name, team_name, login_code) values (?, ?, ?, ?) returning *") [u] :: IO (Either SomeException [User])
+    case user of 
+        Left e -> do
+            logger env ERROR $ "error creating user: " ++ show e
+            error (show e)
+        Right u -> do
+            logger env DEBUG $ "created user "  ++ show user
+            return $ head u
 
 updateUserDetails :: Env -> UserId -> UserName -> TeamName -> IO User
 updateUserDetails env userId userName teamName = do
@@ -61,6 +71,18 @@ updateUserDetails env userId userName teamName = do
             error (show e)
         Right u -> do
             logger env DEBUG $ "updated user "  ++ (show $ head u)
+            return $ head u
+
+updateUserLoginCode :: Env -> UserId -> LoginCode -> IO User
+updateUserLoginCode env userId loginCode = do
+    logger env DEBUG $ "updating user login code for " ++ show userId
+    user <- try $ query (conn env) (getQuery "update users set login_code = ? where id = ? returning *") (loginCode, userId) :: IO (Either SomeException [User])
+    case user of
+        Left e -> do
+            logger env ERROR $ "error updating user login code details: " ++ show e
+            error (show e)
+        Right u -> do
+            logger env DEBUG $ "updated user login code: "  ++ (show $ head u)
             return $ head u
 
 getUserByEmail :: Env -> Email -> IO (Maybe User)

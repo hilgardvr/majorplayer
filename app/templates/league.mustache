@@ -3,30 +3,32 @@
         <p><b>{{name}} - {{course}} - {{prizeCurrency}} {{prize}}</b></p>
     {{/fixture}}
     {{#teams}}
-        <div x-data="{ open: false }">
-            <button @click="open = !open"
-             >{{user.teamName}} <i>({{user.name}})</i> - Total score: {{totalRank}}
-            </button>
-            <div x-show="open">
-                <table>
-                    <tr>
-                        <th>Name</th>
-                        <th>World Ranking</th>
-                        <th>Total To Par</th>
-                        <th>Current Position</th>
-                        <th>Status</th>
-                    </tr>
-                    {{#teamGolfers}}
+        <p>
+            <div x-data="{ open: false }">
+                <button @click="open = !open"
+                 >{{user.teamName}} <i>({{user.name}})</i> - Total score: {{totalRank}}
+                </button>
+                <div x-show="open">
+                    <table>
                         <tr>
-                            <td>{{name}}</td>
-                            <td>{{ranking}}</td>
-                            <td>{{toPar}}</td>
-                            <td>{{position}}</td>
-                            <td>{{status}}</td>
+                            <th>Name</th>
+                            <th>World Ranking</th>
+                            <th>Total To Par</th>
+                            <th>Current Position</th>
+                            <th>Status</th>
                         </tr>
-                    {{/teamGolfers}}
-                </table>
+                        {{#teamGolfers}}
+                            <tr>
+                                <td>{{name}}</td>
+                                <td>{{ranking}}</td>
+                                <td>{{toPar}}</td>
+                                <td>{{position}}</td>
+                                <td>{{status}}</td>
+                            </tr>
+                        {{/teamGolfers}}
+                    </table>
+                </div>
             </div>
-        </div>
+        </p>
     {{/teams}}
 </div>

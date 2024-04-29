@@ -1,5 +1,23 @@
 <div>
     <h3>My Team</h3>
+    {{^user.teamName}}
+        <form method="post" action="/save-user-details">
+            <input
+                    name="user-name"
+                    type="text"
+                    placeholder="My Name"
+                    value=""
+            />
+            <input
+                    name="team-name"
+                    type="text"
+                    placeholder="My Team Name"
+                    value=""
+            />
+            <input type="submit"/>
+        </form>
+    {{/user.teamName}}
+
     {{^selected}}
         <div>
             <h4>No Team Saved - Please Pick And Save Your Team</h4>

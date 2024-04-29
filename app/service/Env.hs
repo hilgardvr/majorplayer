@@ -12,8 +12,6 @@ import System.Environment (getEnv, setEnv, lookupEnv)
 import Data.List (elemIndex)
 import qualified Repo as R (connect)
 import Data.Text (Text)
-import Data.ByteString.Char8 (readInt)
---import GHC.Stack ( HasCallStack, getCallStack, callStack )
 
 data LogLevel = DEBUG | INFO | WARN | ERROR deriving (Show)
 
@@ -75,25 +73,25 @@ getAppEnv :: IO Env
 getAppEnv = do
     _ <- setEnvVars
     dbHost <- getEnv "POSTGRES_HOST"
-    print dbHost
+    print $ "POSTGRES_HOST: " ++ dbHost ++ "<-"
     dbPort <- getEnv "POSTGRES_PORT"
-    print dbPort
+    print $ "POSTGRES_PORT: " ++  dbPort ++ "<-"
     dbUser <- getEnv "POSTGRES_USER"
-    print dbUser
+    print $ "POSTGRES_USER: " ++  dbUser ++ "<-"
     dbPass <- getEnv "POSTGRES_PW"
-    print dbPass
+    print $ "POSTGRES_PW SIZE: " ++ show (take 4 dbPass)
     apiHost <- getEnv "GLD_API_HOST"
-    print apiHost
+    print $ "GLD_API_HOST: " ++  apiHost ++ "<-"
     apiKey <- getEnv "GLD_API_KEY"
-    print apiKey
+    print $ "GLD_API_KEY: " ++ show (take 4 apiKey)
     season <- getEnv "SEASON"
-    print season
+    print $ "SEASON: " ++  season ++ "<-"
     emailHost <- getEnv "EMAIL_HOST"
-    print emailHost
+    print $ "EMAIL_HOST: " ++  emailHost ++ "<-"
     emailUsername <- getEnv "EMAIL_USERNAME"
-    print emailUsername
+    print $ "EMAIL_USERNAME: " ++  emailUsername ++ "<-"
     emailPassword <- getEnv "EMAIL_PASSWORD"
-    print emailPassword
+    print $ "EMAIL_PASSWORD SIZE: " ++ show (take 4 emailPassword)
     conn <- R.connect dbHost (read dbPort) dbUser dbPass
     return Env 
         { conn = conn

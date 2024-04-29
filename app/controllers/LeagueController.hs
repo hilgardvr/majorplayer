@@ -18,7 +18,6 @@ import Golfer (Golfer)
 import Team (getTeamsForUsers)
 import DetailedTeam (buildTeamDetailsDTO)
 import DataClient (DataClientApi (getCurrentFixture, getFixtureLeaderboard))
-import GLDApiLeaderboard (ApiLeaderboard(leaderboard))
 import qualified Fixture
 
 leagueRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()

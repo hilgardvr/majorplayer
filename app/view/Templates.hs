@@ -9,6 +9,7 @@ module Templates
 , buildLeaguesPartial
 , buildLeaguePartial
 , UserTemplate(..)
+, buildLoginCodePartial
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
 import Data.Text (Text)
@@ -46,6 +47,9 @@ leaguesPartial = "leagues.mustache"
 
 leaguePartial :: FilePath
 leaguePartial = "league.mustache"
+
+loginCodePartial :: FilePath
+loginCodePartial = "login-code.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -136,3 +140,6 @@ buildLeaguesPartial env uid ls =
 
 buildLeaguePartial :: Env -> Fixture -> [TeamDetailedDTO] -> IO Text
 buildLeaguePartial env f ts = buildTemplate env leaguePartial (LeaguePartial { fixture = f, teams = ts }) 
+
+buildLoginCodePartial :: Env -> UserTemplate -> IO Text
+buildLoginCodePartial env ut = buildTemplate env loginCodePartial ut
