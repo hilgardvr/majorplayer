@@ -1,0 +1,23 @@
+<div id="app">
+    <h2>MajorPlayer</h2> 
+    {{^player}}
+        {{> login.mustache }}
+    {{/player}}
+    {{#player}}
+        <div>
+            <button 
+                hx-get="/display-team"
+                hx-target="#home"
+            >My Team</button>
+            <button 
+                hx-get="/leagues"
+                hx-target="#home"
+            >My Leagues</button>
+            <button
+                hx-post="/logout"
+                hx-target="#app"
+                hx-swap="outerHTML"
+            >Logout {{player.user.email}}</button>
+        </div>
+    {{/player}}
+</div>

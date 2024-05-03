@@ -10,6 +10,8 @@ module Templates
 , buildLeaguePartial
 , UserTemplate(..)
 , buildLoginCodePartial
+, buildDetailedTeamPartial
+, buildDisabledPartial
 ) where
 import Text.Mustache (automaticCompile, substitute, Template, compileTemplateWithCache, ToMustache (toMustache), object, (~>))
 import Data.Text (Text)
@@ -21,8 +23,11 @@ import Env (Env (logger), LogLevel (DEBUG))
 import User (UserId, User (name))
 import League (League (adminId))
 import Data.List
-import DetailedTeam (TeamDetailedDTO)
+import DetailedTeam (TeamDetailedDTO, TeamGolfer)
 import Fixture (Fixture)
+import GHC.Base (build)
+import Data.UUID (UUID)
+import Network.Wai.Parse (File)
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -50,6 +55,12 @@ leaguePartial = "league.mustache"
 
 loginCodePartial :: FilePath
 loginCodePartial = "login-code.mustache"
+
+detailedTeamPartial :: FilePath
+detailedTeamPartial = "detailed-team.mustache"
+
+disabledPartial :: FilePath
+disabledPartial = "disabled.mustache"
 
 data UserTemplate = UserTemplate
     { player :: !(Maybe Player)
@@ -79,13 +90,26 @@ instance ToMustache LeaguesPartial where
 
 data LeaguePartial = LeaguePartial
     { fixture :: !Fixture
+    , isFixtureRunning :: !Bool
     , teams :: ![TeamDetailedDTO]
     }
 
 instance ToMustache LeaguePartial where
-    toMustache (LeaguePartial fixture teams) = object
+    toMustache (LeaguePartial fixture isFixtureRunning teams) = object
         [ "teams" ~> teams
         , "fixture" ~> fixture
+        , "isFixtureRunning" ~> isFixtureRunning
+        ]
+
+data Disabled = Disabled 
+    { heading :: !String
+    , message :: !String
+    }
+
+instance ToMustache Disabled where
+    toMustache (Disabled heading message) = object
+        [ "heading" ~> heading
+        , "message" ~> message
         ]
 
 compiledTemplates :: IO TemplateCache
@@ -138,8 +162,20 @@ buildLeaguesPartial env uid ls =
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
     in buildTemplate env leaguesPartial (LeaguesPartial admin nonAdmin)
 
-buildLeaguePartial :: Env -> Fixture -> [TeamDetailedDTO] -> IO Text
-buildLeaguePartial env f ts = buildTemplate env leaguePartial (LeaguePartial { fixture = f, teams = ts }) 
+buildLeaguePartial :: Env -> Fixture -> Bool -> [TeamDetailedDTO] -> IO Text
+buildLeaguePartial env f isRunning ts = 
+    buildTemplate env leaguePartial $ 
+        LeaguePartial 
+            { fixture = f
+            , teams = ts
+            , isFixtureRunning = isRunning  
+            }
+
+buildDetailedTeamPartial :: Env -> TeamDetailedDTO -> IO Text
+buildDetailedTeamPartial env dt = buildTemplate env detailedTeamPartial dt
 
 buildLoginCodePartial :: Env -> UserTemplate -> IO Text
 buildLoginCodePartial env ut = buildTemplate env loginCodePartial ut
+
+buildDisabledPartial :: Env -> String -> String -> IO Text
+buildDisabledPartial env header msg = buildTemplate env disabledPartial (Disabled header msg)

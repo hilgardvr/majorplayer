@@ -1,34 +1,19 @@
 <div>
-    {{#fixture}}
-        <p><b>{{name}} - {{course}} - {{prizeCurrency}} {{prize}}</b></p>
-    {{/fixture}}
+    {{#isFixtureRunning}}
+        <p><b>In Progress: {{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
+    {{/isFixtureRunning}}
+    {{^isFixtureRunning}}
+        <p><b>Completed: {{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
+    {{/isFixtureRunning}}
     {{#teams}}
         <p>
-            <div x-data="{ open: false }">
-                <button @click="open = !open"
-                 >{{user.teamName}} <i>({{user.name}})</i> - Total score: {{totalRank}}
-                </button>
-                <div x-show="open">
-                    <table>
-                        <tr>
-                            <th>Name</th>
-                            <th>World Ranking</th>
-                            <th>Total To Par</th>
-                            <th>Current Position</th>
-                            <th>Status</th>
-                        </tr>
-                        {{#teamGolfers}}
-                            <tr>
-                                <td>{{name}}</td>
-                                <td>{{ranking}}</td>
-                                <td>{{toPar}}</td>
-                                <td>{{position}}</td>
-                                <td>{{status}}</td>
-                            </tr>
-                        {{/teamGolfers}}
-                    </table>
-                </div>
-            </div>
+            <button
+                    hx-get="/league/detailed-team/{{ user.id }}"
+                    hx-target="#detailed-team-{{ user.id }}"
+                    hx-swap="innerHTML"
+             >{{user.teamName}} <i>({{user.name}})</i> - Total score: {{totalRank}}
+            </button>
+            <div id="detailed-team-{{user.id}}"></div>
         </p>
     {{/teams}}
 </div>
