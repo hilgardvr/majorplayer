@@ -2,10 +2,11 @@
 
 module DetailedTeam
 ( TeamDetailedDTO(..)
+, TeamGolfer(..)
 , buildTeamDetailsDTO
 ) where
 import User (User(..))
-import Golfer (id, Golfer (Golfer, name, ranking), GolferId, Ranking, GolferName)
+import Golfer (id, Golfer (name, ranking), GolferId, Ranking, GolferName)
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Env (Env)
 import Data.List (find, sortBy)

@@ -39,13 +39,10 @@ instance ToRow League where
 instance FromRow League where
     fromRow = League <$> field <*> field <*> field <*> field
 
-instance ToMustache UUID where
-    toMustache = toMustache . show 
-
 instance ToMustache League where
     toMustache (League i aid n pc) = object
         [ "id" ~> maybe "" show i
-        , "adminId" ~> aid
+        , "adminId" ~> show aid
         , "name" ~> n
         , "passcode" ~> pc
         ]

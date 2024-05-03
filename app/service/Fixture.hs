@@ -4,12 +4,10 @@ module Fixture
 ( FixtureAPIResponse(..)
 , Fixture(..)
 , FixtureId
-, currentFixture
 ) where 
 import Data.Time (LocalTime)
 import GLDApiMeta (ApiMeta)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:) )
-import Data.List (sortBy)
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 
 type FixtureId = Int
@@ -70,13 +68,3 @@ instance ToMustache Fixture where
         , "prizeCurrency" ~> prizeCurrency
         ]
 
-currentFixture :: [Fixture] -> LocalTime -> Fixture
-currentFixture fs now =  
-    let started = filter afterStartDate fs
-    in head $ reverse $ sortByStartDate started
-    where
-        afterStartDate :: Fixture -> Bool
-        afterStartDate x = startDate x < now
-
-        sortByStartDate :: [Fixture] -> [Fixture]
-        sortByStartDate = sortBy (\x y -> compare (startDate x) (startDate y))

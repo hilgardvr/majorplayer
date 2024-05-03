@@ -9,7 +9,7 @@ import Web.Scotty (ScottyM, get, html, redirect, post, capture, put, capturePara
 import Web.Scotty.Cookie (getCookie)
 import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Templates (UserTemplate(UserTemplate), buildSelectTeamPartial, buildTeamPage, buildFilteredGolfers)
+import Templates (UserTemplate(UserTemplate), buildSelectTeamPartial, buildTeamPage, buildFilteredGolfers, buildDisabledPartial)
 import qualified Data.Text.Lazy as TL
 import Team (getTeam, Team (golferIds), addTeam)
 import Validation (Validatable(validate))
@@ -19,7 +19,9 @@ import DraftTeam (addDraftPlayer, deleteDraftPlayer, getDraftTeam, DraftTeam (go
 import User (id, updateUserDetails)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
-import DataClient (DataClientApi)
+import DataClient (DataClientApi (getCurrentFixture, isFixtureRunning))
+import Data.Time (getCurrentTime, utc, utcToLocalTime)
+import Fixture (name)
 
 teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 teamRoutes env allGolfers client = do
@@ -45,16 +47,25 @@ teamRoutes env allGolfers client = do
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
-        u <- case user of
-                Nothing -> redirect "/"
-                Just u -> pure u
-        (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-        liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
-        let player = Player u selected
-            validated = validate player
-            ut = UserTemplate (Just player) notSelected validated
-        t <- liftIO $ buildSelectTeamPartial env ut
-        html $ TL.fromStrict t
+        fixture <- liftIO $ getCurrentFixture client
+        nowUtc <- liftIO getCurrentTime
+        let nowUtcLocal = utcToLocalTime utc nowUtc
+            isRunning = isFixtureRunning client fixture nowUtcLocal
+        if isRunning 
+        then do
+            t <- liftIO $ buildDisabledPartial env ((Fixture.name fixture) ++ " Is Currently In Progress") "Team selections are disabled until the tournament is completed" 
+            html $ TL.fromStrict t
+        else do
+            u <- case user of
+                    Nothing -> redirect "/"
+                    Just u -> pure u
+            (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+            liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
+            let player = Player u selected
+                validated = validate player
+                ut = UserTemplate (Just player) notSelected validated
+            t <- liftIO $ buildSelectTeamPartial env ut
+            html $ TL.fromStrict t
 
     put (capture "/select/:golferId") $ do
         gid <- captureParam "golferId"

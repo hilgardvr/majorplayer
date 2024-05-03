@@ -5,7 +5,7 @@ module Player
 where
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import User (User(..))
-import Validation (Validatable (validate), ValidationError)
+import Validation (Validatable (validate))
 import Golfer (Golfer (ranking))
 
 data Player = Player 

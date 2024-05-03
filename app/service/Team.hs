@@ -39,13 +39,9 @@ instance ToRow Team where
 instance FromRow Team where
     fromRow = Team <$> field <*> field <*> (fromPGArray <$> field) <*> field
 
-instance ToMustache UUID where
-    toMustache = toMustache . show 
-
-
 instance ToMustache Team where
     toMustache (Team i uid gids ti) = object
-        [ "userId" ~> uid
+        [ "userId" ~> show uid
         , "golferIds" ~> gids
         , "tournamentId" ~> ti
         ]

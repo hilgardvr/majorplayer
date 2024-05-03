@@ -42,11 +42,15 @@ instance FromRow User where
     fromRow = User <$> field <*> field <*> field <*> field <*> field
 
 instance ToMustache User where
-    toMustache (User i email name teamName loginCode) = object
-        [ "email" ~> email
-        , "name" ~> name
-        , "teamName" ~> teamName
-        ]
+    toMustache (User i email name teamName loginCode) = 
+        case i of
+            Nothing -> error $ "Expecting an id for user: " ++ email 
+            Just i' -> object
+                [ "id" ~> show i'
+                , "email" ~> email
+                , "name" ~> name
+                , "teamName" ~> teamName
+                ]
 
 createUser :: Env -> Email -> IO User
 createUser env email = do
