@@ -11,7 +11,7 @@ import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildSelectTeamPartial, buildTeamPage, buildFilteredGolfers, buildDisabledPartial)
 import qualified Data.Text.Lazy as TL
-import Team (getTeam, Team (golferIds), addTeam)
+import Team (getTeamForFixture, Team (golferIds), addTeam)
 import Validation (Validatable(validate))
 import Golfer (Golfer (name, id), GolferId)
 import Player (Player(Player))
@@ -19,9 +19,9 @@ import DraftTeam (addDraftPlayer, deleteDraftPlayer, getDraftTeam, DraftTeam (go
 import User (id, updateUserDetails)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
-import DataClient (DataClientApi (getCurrentFixture, isFixtureRunning))
+import DataClient (DataClientApi (getPrePostStartDate))
 import Data.Time (getCurrentTime, utc, utcToLocalTime)
-import Fixture (name)
+import Fixture (name, Fixture (id))
 
 teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 teamRoutes env allGolfers client = do
@@ -47,25 +47,22 @@ teamRoutes env allGolfers client = do
     get "/change-team" $ do
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
-        fixture <- liftIO $ getCurrentFixture client
-        nowUtc <- liftIO getCurrentTime
-        let nowUtcLocal = utcToLocalTime utc nowUtc
-            isRunning = isFixtureRunning client fixture nowUtcLocal
-        if isRunning 
-        then do
-            t <- liftIO $ buildDisabledPartial env ((Fixture.name fixture) ++ " Is Currently In Progress") "Team selections are disabled until the tournament is completed" 
-            html $ TL.fromStrict t
-        else do
-            u <- case user of
-                    Nothing -> redirect "/"
-                    Just u -> pure u
-            (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-            liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
-            let player = Player u selected
-                validated = validate player
-                ut = UserTemplate (Just player) notSelected validated
-            t <- liftIO $ buildSelectTeamPartial env ut
-            html $ TL.fromStrict t
+        (fixture, _) <- liftIO $ getPrePostStartDate client
+        case fixture of
+            Nothing ->  do
+                t <- liftIO $ buildDisabledPartial env "Selections are disabled" "There are no upcoming fixtures defined"
+                html $ TL.fromStrict t
+            Just _ -> do
+                u <- case user of
+                        Nothing -> redirect "/"
+                        Just u -> pure u
+                (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+                --liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
+                let player = Player u selected
+                    validated = validate player
+                    ut = UserTemplate (Just player) notSelected validated
+                t <- liftIO $ buildSelectTeamPartial env ut
+                html $ TL.fromStrict t
 
     put (capture "/select/:golferId") $ do
         gid <- captureParam "golferId"
@@ -108,16 +105,20 @@ teamRoutes env allGolfers client = do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
         draftTeam <- liftIO $ getDraftTeam env (mapMaybe  User.id user)
+        (notStarted, _) <- liftIO $ getPrePostStartDate client
+        let fixture = case notStarted of
+                Nothing -> error "no upcoming fixture defined"
+                Just f -> f
         case validate draftTeam of
             Nothing -> do
-                _ <- liftIO $ addTeam env (map DraftTeam.golferId draftTeam) (mapMaybe User.id user)
+                _ <- liftIO $ addTeam env (map DraftTeam.golferId draftTeam) (Fixture.id fixture) (mapMaybe User.id user) 
                 liftIO $ logger env DEBUG "Saved team - redireting"
-                redirect "/display-team"
+                redirect "/team"
             Just err -> do
                 liftIO $ logger env ERROR $ "Tried to save team but validation failed" ++ err
                 redirect "/"
 
-    get "/display-team" $ do
+    get "/team" $ do
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
         user' <- case user of
@@ -125,16 +126,22 @@ teamRoutes env allGolfers client = do
                 liftIO $ logger env ERROR "Could not find user to display team"
                 redirect "/"
             Just u -> pure u
-        team <- liftIO $ getTeam env (mapMaybe  User.id user)
-        case team of
-            Nothing -> do
-                liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
-                t <- liftIO $ buildTeamPage env $ Player user' []
+        (notStarted, started) <- liftIO $ getPrePostStartDate client
+        case notStarted of
+            Nothing ->  do
+                t <- liftIO $ buildDisabledPartial env "Selections are disabled" "There are no upcoming fixtures defined"
                 html $ TL.fromStrict t
-            Just t -> do
-                let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
-                t <- liftIO $ buildTeamPage env $ Player user' playerTeam
-                html $ TL.fromStrict t
+            Just fixture -> do
+                team <- liftIO $ getTeamForFixture env (User.id user') (Fixture.id fixture)
+                case team of
+                    Nothing -> do
+                        liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
+                        t <- liftIO $ buildTeamPage env $ Player user' []
+                        html $ TL.fromStrict t
+                    Just t -> do
+                        let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
+                        t <- liftIO $ buildTeamPage env $ Player user' playerTeam
+                        html $ TL.fromStrict t
 
     get "/filter-available" $ do
         c <- getCookie "majorplayer"

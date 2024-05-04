@@ -16,7 +16,7 @@ app env = do
         middleware logStdout
         teamRoutes env allGolfers client
         leagueRoutes env allGolfers client
-        loginRoutes env allGolfers
+        loginRoutes env allGolfers client
 
 
 main :: IO ()

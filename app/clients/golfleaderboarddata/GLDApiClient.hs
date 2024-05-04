@@ -20,27 +20,26 @@ import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
 import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
-import Fixture (FixtureAPIResponse (results), Fixture (startDate, endDate), FixtureId)
+import Fixture (FixtureAPIResponse (results), Fixture (startDate), FixtureId, NotStartedFixture, StartedFixture)
 import qualified GLDApiRankings as RankingApiResponse
-import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), ApiLeaderboardGolfer(..), apiToLeaderboardGolfer)
+import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), apiToLeaderboardGolfer)
 import Leaderboard (LeaderboardGolfer)
 import DataClient (DataClientApi(..))
 import Data.List (sortBy)
+import Utils (getSafeHead)
 
 data GLDApiClient = GLDApiClient
     { gldRankings :: !(IO [Golfer])
     , gldFixtures :: !(IO [Fixture])
     , gldLeaderboard :: !(FixtureId -> IO [LeaderboardGolfer])
-    , gldCurrentFixture :: !(IO Fixture)
-    , gldIsFixtureRunning :: !(Fixture -> LocalTime -> Bool)
+    , gldGetPrePostStartDate :: !(IO (Maybe Fixture, Maybe Fixture))
     }
 
 instance DataClientApi GLDApiClient where
-    getGolferRankings (GLDApiClient r _ _ _ _) = r
-    getFixures (GLDApiClient _ f _ _ _) = f
-    getFixtureLeaderboard (GLDApiClient _ _ l _ _) = l
-    getCurrentFixture (GLDApiClient _ _ _ c _) = c
-    isFixtureRunning (GLDApiClient _ _ _ _ r) = r
+    getGolferRankings (GLDApiClient r _ _ _) = r
+    getFixures (GLDApiClient _ f _ _) = f
+    getFixtureLeaderboard (GLDApiClient _ _ l _) = l
+    getPrePostStartDate (GLDApiClient _ _ _ pp) = pp
 
 getGLDClient :: Env -> GLDApiClient
 getGLDClient env =
@@ -48,8 +47,7 @@ getGLDClient env =
         { gldRankings = getGLDGolferRankings env
         , gldFixtures = getGLDFixures env
         , gldLeaderboard = getGLDLeaderboard env
-        , gldCurrentFixture = getGLDCurrentFixure env
-        , gldIsFixtureRunning = isGLDFixtureRunning
+        , gldGetPrePostStartDate = getGLDPrePostStartDate env
         }
 
 type TableName = String
@@ -76,26 +74,23 @@ leaderboardEndpoint fid = "/leaderboard/" ++ show fid
 daySeconds :: NominalDiffTime
 daySeconds = 86400
 
-getGLDCurrentFixure :: Env -> IO Fixture
-getGLDCurrentFixure env = do
-    fs <- getGLDFixures env
+add12h :: LocalTime -> LocalTime
+add12h = addLocalTime (daySeconds / 2)
+
+getGLDPrePostStartDate :: Env -> IO (Maybe NotStartedFixture, Maybe StartedFixture)
+getGLDPrePostStartDate env = do
+    fixtures <- getGLDFixures env
     nowUtc <- getCurrentTime
     let nowUtcLocal = utcToLocalTime utc nowUtc
-    return $ currentFixture fs nowUtcLocal
+        sorted  = sortByStartDate fixtures
+        notStarted = getSafeHead $ dropWhile (\e -> nowUtcLocal > (add12h $ startDate e)) sorted
+        started = getSafeHead $ dropWhile (\e -> nowUtcLocal < (add12h $ startDate e)) $ reverse sorted
+    pure (notStarted, started)
 
-currentFixture :: [Fixture] -> LocalTime -> Fixture
-currentFixture fs now =  
-    let started = filter afterStartDate fs
-    in head $ reverse $ sortByStartDate started
-    where
-        afterStartDate :: Fixture -> Bool
-        afterStartDate x = startDate x < now
 
-        sortByStartDate :: [Fixture] -> [Fixture]
-        sortByStartDate = sortBy (\x y -> compare (startDate x) (startDate y))
+sortByStartDate :: [Fixture] -> [Fixture]
+sortByStartDate = sortBy (\x y -> compare (startDate x) (startDate y))
 
-isGLDFixtureRunning :: Fixture -> LocalTime -> Bool
-isGLDFixtureRunning f now = now > (addLocalTime (daySeconds / 2) $ startDate f) && (addLocalTime daySeconds now) < endDate f
 
 getGLDFixures :: Env -> IO [Fixture]
 getGLDFixures env = do
@@ -128,7 +123,7 @@ getGLDLeaderboard env fid = do
     body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 4000 --900 -- 15min
     -- print $ "raw leaderboard: " ++ take 400 (rawResponse body)
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe ApiLeaderboardResponse
-    print decoded
+    -- print decoded
     case decoded of
         Nothing -> do
             logger env ERROR "failed to decode leaderboard from json"

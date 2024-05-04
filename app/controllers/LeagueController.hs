@@ -9,18 +9,16 @@ import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, captu
 import Web.Scotty.Cookie (getCookie)
 import Utils (getUserForSession)
 import Control.Monad.IO.Class (MonadIO(liftIO))
-import Templates (buildLeaguesPartial, buildLeaguePartial, buildIndex, buildDetailedTeamPartial)
+import Templates (buildLeaguesPartial, buildLeaguePartial, buildDetailedTeamPartial, buildDisabledPartial)
 import qualified Data.Text.Lazy as TL
 import User (id, getUsersByIds, getUserById)
 import League (getLeaguesForUser, createLeague, joinLeague, League (name), getUserIdsForLeague)
 import qualified Data.UUID as UUID
 import Golfer (Golfer)
-import Team (getTeamsForUsers, getTeam)
-import DetailedTeam (buildTeamDetailsDTO, TeamDetailedDTO (teamGolfers))
-import DataClient (DataClientApi (getCurrentFixture, getFixtureLeaderboard, isFixtureRunning))
+import Team (getTeamsForUsersAndFixture, getTeamForFixture)
+import DetailedTeam (buildTeamDetailsDTO, buildDummyTeamDetails)
+import DataClient (DataClientApi (getFixtureLeaderboard, getPrePostStartDate))
 import qualified Fixture
-import Data.Time (getCurrentTime, utc, utcToLocalTime)
-import GLDApiLeaderboard (ApiLeaderboard(leaderboard))
 
 leagueRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 leagueRoutes env allGolfers client = do
@@ -61,21 +59,27 @@ leagueRoutes env allGolfers client = do
                     error $ "Failed to parse uuid from string: " ++ lidStr
                 Just i -> do return i
         userIds <- liftIO $ getUserIdsForLeague env lid
-        teams <- liftIO $ getTeamsForUsers env userIds
-        users <- liftIO $ getUsersByIds env userIds
-        fixture <- liftIO $ getCurrentFixture client
-        nowUtc <- liftIO getCurrentTime
-        let nowUtcLocal = utcToLocalTime utc nowUtc
-            isRunning = isFixtureRunning client fixture nowUtcLocal
-        leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id fixture)
-        let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
-        t <- liftIO $ buildLeaguePartial env fixture isRunning teamDetails
-        html $ TL.fromStrict t
+        (_, startedM) <- liftIO $ getPrePostStartDate client
+        case startedM of
+             Nothing -> error "not started fixture found"
+             Just started -> do
+                teams <- liftIO $ getTeamsForUsersAndFixture env userIds (Fixture.id started) 
+                users <- liftIO $ getUsersByIds env userIds
+                (_, startedM) <- liftIO $ getPrePostStartDate client
+                startedFixture <- case startedM of
+                    Nothing -> do
+                        liftIO $ logger env ERROR "no started fixture found"
+                        error "no started fixture found"
+                    Just s -> pure s
+                leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id startedFixture)
+                let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
+                t <- liftIO $ buildLeaguePartial env startedFixture teamDetails
+                html $ TL.fromStrict t
 
     get "/league/detailed-team/:userId" $ do
         c <- getCookie "majorplayer"
         userMaybe <- liftIO $ getUserForSession env c
-        user <- case userMaybe of
+        _ <- case userMaybe of
             Nothing -> do
                 liftIO $ logger env ERROR "Could not find user to find league"
                 redirect "/"
@@ -93,17 +97,23 @@ leagueRoutes env allGolfers client = do
                     error $ "Failed to find user to display: " ++ (show uidDisplay)
                 Just u' -> do
                     liftIO $ pure u'
-        team <- liftIO $ getTeam env (Just uidDisplay)
-        case team of
+        (notStarted, started) <- liftIO $ getPrePostStartDate client
+        case started of
             Nothing -> do
-                liftIO $ logger env ERROR $ "No team found for detailed team: " ++ show uidDisplay
-                error $ "No team found for detailed team: " ++ show uidDisplay
-            Just t -> do
-                fixture <- liftIO $ getCurrentFixture client
-                leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id fixture)
-                let detailedTeam = buildTeamDetailsDTO env [t] [displayUser] allGolfers leaderboard
-                t <- liftIO $ buildDetailedTeamPartial env (head detailedTeam)
+                t <- liftIO $ buildDisabledPartial env "No Current Leaderboard" "There are no started fixtures defined"
                 html $ TL.fromStrict t
+            Just s -> do
+                team <- liftIO $ getTeamForFixture env (Just uidDisplay) (Fixture.id s)
+                case team of
+                    Nothing -> do
+                        let detailedTeamDummyTeam = buildDummyTeamDetails displayUser 
+                        t <- liftIO $ buildDetailedTeamPartial env detailedTeamDummyTeam
+                        html $ TL.fromStrict t
+                    Just t -> do
+                        leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id s)
+                        let detailedTeam = buildTeamDetailsDTO env [t] [displayUser] allGolfers leaderboard
+                        t <- liftIO $ buildDetailedTeamPartial env (head detailedTeam)
+                        html $ TL.fromStrict t
 
     post "/create-league" $ do
         c <- getCookie "majorplayer"

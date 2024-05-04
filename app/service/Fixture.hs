@@ -4,6 +4,8 @@ module Fixture
 ( FixtureAPIResponse(..)
 , Fixture(..)
 , FixtureId
+, StartedFixture
+, NotStartedFixture
 ) where 
 import Data.Time (LocalTime)
 import GLDApiMeta (ApiMeta)
@@ -13,6 +15,8 @@ import Text.Mustache (ToMustache (toMustache), object, (~>))
 type FixtureId = Int
 type TourId = Int
 type Season = Int
+type NotStartedFixture = Fixture
+type StartedFixture = Fixture
 
 data FixtureAPIResponse = FixtureAPIResponse
     { meta :: !ApiMeta

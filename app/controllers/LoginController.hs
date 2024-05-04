@@ -16,13 +16,15 @@ import User (getUserByEmail, createUser, User (id, loginCode, email), Email, Log
 import Session (createSession, Session (id))
 import qualified Data.UUID as UUID
 import Data.Text (pack, unpack)
-import Team (getTeam, Team (golferIds))
+import Team (getTeamForFixture, Team (golferIds))
 import Validation (Validatable(validate))
 import Network.Mail.SMTP (Address(Address), simpleMail, plainTextPart, sendMailWithLoginTLS)
 import Text.StringRandom (stringRandomIO)
+import DataClient (DataClientApi(getPrePostStartDate))
+import Fixture (id)
 
-loginRoutes :: Env -> [Golfer] -> ScottyM ()
-loginRoutes env allGolfers = do
+loginRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
+loginRoutes env allGolfers client = do
 
     post "/logout" $ do
         c <- getCookie (cookieKey env)
@@ -63,17 +65,21 @@ loginRoutes env allGolfers = do
         u <- case user of
                 Nothing -> redirect "/"
                 Just u -> pure u
-        team <- liftIO $ getTeam env (User.id u)
-        let (teamSelected, notSelected) = case team of
-                Nothing -> ([], allGolfers)
-                Just t -> filterGolfersById (Team.golferIds t) allGolfers
-        let player = Player 
-                { user = u
-                , selected = teamSelected
-                }
-            validated = validate player
-        t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
-        html $ TL.fromStrict t
+        (notStartedM, _) <- liftIO $ getPrePostStartDate client
+        case notStartedM of
+            Nothing -> error "no upcoming fixture defined"
+            Just notStartedFixture -> do
+                team <- liftIO $ getTeamForFixture env (User.id u) (Fixture.id notStartedFixture)
+                let (teamSelected, notSelected) = case team of
+                        Nothing -> ([], allGolfers)
+                        Just t -> filterGolfersById (Team.golferIds t) allGolfers
+                let player = Player 
+                        { user = u
+                        , selected = teamSelected
+                        }
+                    validated = validate player
+                t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
+                html $ TL.fromStrict t
 
     get "/" $ do
         c <- getCookie (cookieKey env)

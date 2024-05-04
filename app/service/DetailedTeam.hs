@@ -4,6 +4,7 @@ module DetailedTeam
 ( TeamDetailedDTO(..)
 , TeamGolfer(..)
 , buildTeamDetailsDTO
+, buildDummyTeamDetails
 ) where
 import User (User(..))
 import Golfer (id, Golfer (name, ranking), GolferId, Ranking, GolferName)
@@ -47,6 +48,15 @@ instance ToMustache TeamDetailedDTO where
         , "totalRank" ~> totalRank
         ]
 
+buildDummyTeamDetails :: User.User -> TeamDetailedDTO
+buildDummyTeamDetails user = 
+    TeamDetailedDTO 
+        { user = user
+        , teamGolfers = replicate 8 $ TeamGolfer (-1) (-1) "No Selection" 100 "100" "No Selection"
+        , totalRank = 800
+        }
+        
+
 buildTeamDetailsDTO :: Env -> [Team.Team] -> [User.User] -> [Golfer] -> [LeaderboardGolfer] -> [TeamDetailedDTO]
 buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams 
     where 
@@ -71,7 +81,7 @@ buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams
                                     toPar = "N/A"
                                     status = "N/A"
                                 in
-                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) 100 toPar status
+                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) pos toPar status
                                 -- error $ "Could not find leaderboard golfer " ++ show (Golfer.id g)
                             Just p -> 
                                 let roundStatus = LeaderboardGolfer.status p

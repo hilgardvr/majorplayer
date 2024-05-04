@@ -1,10 +1,5 @@
 <div>
-    {{#isFixtureRunning}}
-        <p><b>In Progress: {{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
-    {{/isFixtureRunning}}
-    {{^isFixtureRunning}}
-        <p><b>Completed: {{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
-    {{/isFixtureRunning}}
+    <p><b>{{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
     {{#teams}}
         <p>
             <button

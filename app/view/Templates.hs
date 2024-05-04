@@ -90,15 +90,13 @@ instance ToMustache LeaguesPartial where
 
 data LeaguePartial = LeaguePartial
     { fixture :: !Fixture
-    , isFixtureRunning :: !Bool
     , teams :: ![TeamDetailedDTO]
     }
 
 instance ToMustache LeaguePartial where
-    toMustache (LeaguePartial fixture isFixtureRunning teams) = object
+    toMustache (LeaguePartial fixture teams) = object
         [ "teams" ~> teams
         , "fixture" ~> fixture
-        , "isFixtureRunning" ~> isFixtureRunning
         ]
 
 data Disabled = Disabled 
@@ -162,13 +160,12 @@ buildLeaguesPartial env uid ls =
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
     in buildTemplate env leaguesPartial (LeaguesPartial admin nonAdmin)
 
-buildLeaguePartial :: Env -> Fixture -> Bool -> [TeamDetailedDTO] -> IO Text
-buildLeaguePartial env f isRunning ts = 
+buildLeaguePartial :: Env -> Fixture -> [TeamDetailedDTO] -> IO Text
+buildLeaguePartial env f ts = 
     buildTemplate env leaguePartial $ 
         LeaguePartial 
             { fixture = f
             , teams = ts
-            , isFixtureRunning = isRunning  
             }
 
 buildDetailedTeamPartial :: Env -> TeamDetailedDTO -> IO Text
