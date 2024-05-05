@@ -20,7 +20,7 @@ import Player (Player (user))
 import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
-import User (UserId, User (name))
+import User (UserId, User (name), Email)
 import League (League (adminId))
 import Data.List
 import DetailedTeam (TeamDetailedDTO, TeamGolfer)
@@ -171,8 +171,8 @@ buildLeaguePartial env f ts =
 buildDetailedTeamPartial :: Env -> TeamDetailedDTO -> IO Text
 buildDetailedTeamPartial env dt = buildTemplate env detailedTeamPartial dt
 
-buildLoginCodePartial :: Env -> UserTemplate -> IO Text
-buildLoginCodePartial env ut = buildTemplate env loginCodePartial ut
+buildLoginCodePartial :: Env -> Email -> IO Text
+buildLoginCodePartial env email = buildTemplate env loginCodePartial email
 
 buildDisabledPartial :: Env -> String -> String -> IO Text
 buildDisabledPartial env header msg = buildTemplate env disabledPartial (Disabled header msg)

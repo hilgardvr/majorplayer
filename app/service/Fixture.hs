@@ -70,5 +70,6 @@ instance ToMustache Fixture where
         , "course" ~> course
         , "prize" ~> prize
         , "prizeCurrency" ~> prizeCurrency
+        , "start" ~> show startDate
         ]
 

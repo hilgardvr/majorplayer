@@ -6,7 +6,7 @@ module LoginController
 import Golfer (Golfer, filterGolfersById)
 import Env (Env (cookieKey, logger, emailPassword, emailUsername, emailHost), LogLevel (DEBUG, ERROR, WARN))
 import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, captureParam)
-import Player (Player(Player, user, selected))
+import Player (Player(Player, user, selected, fixture))
 import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie, getCookies)
 import Utils (getUserForSession)
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -54,7 +54,7 @@ loginRoutes env allGolfers client = do
                 loginCode <- liftIO generateLoginCode
                 liftIO $ sendLoginCodeEmail env email loginCode
                 _ <- liftIO $ updateUserLoginCode env userId loginCode
-                t <- liftIO $ buildLoginCodePartial env $ UserTemplate (Just $ Player user []) allGolfers Nothing
+                t <- liftIO $ buildLoginCodePartial env email 
                 html $ TL.fromStrict t
 
     get "/home" $ do 
@@ -76,6 +76,7 @@ loginRoutes env allGolfers client = do
                 let player = Player 
                         { user = u
                         , selected = teamSelected
+                        , fixture = notStartedFixture
                         }
                     validated = validate player
                 t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated

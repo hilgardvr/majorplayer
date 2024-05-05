@@ -7,22 +7,23 @@ import Text.Mustache (ToMustache (toMustache), object, (~>))
 import User (User(..))
 import Validation (Validatable (validate))
 import Golfer (Golfer (ranking))
+import Fixture (Fixture)
 
 data Player = Player 
     { user :: !User
     , selected :: ![Golfer]
-    --, team :: Team
+    , fixture :: !Fixture
     }
 
 instance ToMustache Player where
-    toMustache (Player u s) = object
+    toMustache (Player u s f) = object
         [ "user" ~> u
         , "selected" ~> s
-        --, "team" ~> t
+        , "fixture" ~> f
         ]
 
 instance Validatable Player where
-    validate (Player u s) = 
+    validate (Player u s _) = 
         let selectedRanks = map ranking s
             topTen = filter (\e -> e <= 10) selectedRanks
         in if length selectedRanks /= 8

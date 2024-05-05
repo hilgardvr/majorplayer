@@ -52,13 +52,13 @@ teamRoutes env allGolfers client = do
             Nothing ->  do
                 t <- liftIO $ buildDisabledPartial env "Selections are disabled" "There are no upcoming fixtures defined"
                 html $ TL.fromStrict t
-            Just _ -> do
+            Just f -> do
                 u <- case user of
                         Nothing -> redirect "/"
                         Just u -> pure u
                 (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
                 --liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
-                let player = Player u selected
+                let player = Player u selected f
                     validated = validate player
                     ut = UserTemplate (Just player) notSelected validated
                 t <- liftIO $ buildSelectTeamPartial env ut
@@ -69,37 +69,45 @@ teamRoutes env allGolfers client = do
         liftIO $ logger env DEBUG $ "found golferId: " ++ gid
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
-        let readGolferId = read gid :: GolferId
-        case user of
-            Nothing -> do
-                liftIO $ logger env WARN $ "Could not find user to select golfer. Session: " ++ show c
-                redirect "/"
-            Just u -> do
-                _ <- liftIO $ addDraftPlayer env readGolferId (User.id u)
-                (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-                let player = Player u selected
-                    validation = validate player
-                t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
-                html $ TL.fromStrict t
+        (notStarted, _) <- liftIO $ getPrePostStartDate client
+        case notStarted of
+            Nothing -> error "no future fixture found"
+            Just f ->
+                let readGolferId = read gid :: GolferId
+                in case user of
+                    Nothing -> do
+                        liftIO $ logger env WARN $ "Could not find user to select golfer. Session: " ++ show c
+                        redirect "/"
+                    Just u -> do
+                        _ <- liftIO $ addDraftPlayer env readGolferId (User.id u)
+                        (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+                        let player = Player u selected f
+                            validation = validate player
+                        t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
+                        html $ TL.fromStrict t
 
     put (capture "/deselect/:golferId") $ do
         gid <- captureParam "golferId"
         liftIO $ logger env DEBUG $ "found golferId for deselect: " ++ gid
         c <- getCookie "majorplayer"
         user <- liftIO $ getUserForSession env c
-        let readGolferId = read gid :: GolferId
-        case user of
-            Nothing -> do
-                liftIO $ logger env WARN $ "Could not find user to deselect golfer. Session: " ++ show c
-                redirect "/"
-            Just u -> do
-                _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u)
-                (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-                let player = Player u selected
-                    validation = validate player
-                liftIO $ logger env DEBUG ("selected :" ++ show (map Golfer.name selected))
-                t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
-                html $ TL.fromStrict t
+        (notStarted, _) <- liftIO $ getPrePostStartDate client
+        case notStarted of
+            Nothing -> error "no future fixture found"
+            Just f ->
+                let readGolferId = read gid :: GolferId
+                in case user of
+                    Nothing -> do
+                        liftIO $ logger env WARN $ "Could not find user to deselect golfer. Session: " ++ show c
+                        redirect "/"
+                    Just u -> do
+                        _ <- liftIO $ deleteDraftPlayer env readGolferId (User.id u)
+                        (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
+                        let player = Player u selected f
+                            validation = validate player
+                        liftIO $ logger env DEBUG ("selected :" ++ show (map Golfer.name selected))
+                        t <- liftIO $ buildSelectTeamPartial env $ UserTemplate (Just player) notSelected validation
+                        html $ TL.fromStrict t
 
     post "/save-team" $ do
         c <- getCookie "majorplayer"
@@ -136,11 +144,11 @@ teamRoutes env allGolfers client = do
                 case team of
                     Nothing -> do
                         liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
-                        t <- liftIO $ buildTeamPage env $ Player user' []
+                        t <- liftIO $ buildTeamPage env $ Player user' [] fixture
                         html $ TL.fromStrict t
                     Just t -> do
                         let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
-                        t <- liftIO $ buildTeamPage env $ Player user' playerTeam
+                        t <- liftIO $ buildTeamPage env $ Player user' playerTeam fixture
                         html $ TL.fromStrict t
 
     get "/filter-available" $ do

@@ -1,6 +1,6 @@
 <p>
-    <h3>Login code sent to {{player.user.email}}</h3>
-    <form action="/{{player.user.email}}" method="post">
+    <h3>Login code sent to {{.}}</h3>
+    <form action="/{{.}}" method="post">
         <input type="text" name="login-code" />
         <input type="submit" value="Submit"/>
     </form>

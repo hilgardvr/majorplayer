@@ -4,7 +4,7 @@ module Team
 ( Team(..)
 , addTeam
 , getTeamForFixture
-, deleteTeam
+, deleteTeamForFixture
 , getTeamsForUsersAndFixture
 ) where
 import Data.UUID (UUID)
@@ -20,6 +20,7 @@ import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Control.Exception (SomeException, try)
 import Fixture (FixtureId)
+import Data.Int (Int64)
 
 
 data Team = Team
@@ -53,7 +54,7 @@ addTeam env golferIds fixtureId userId = do
         Just uid -> do
             existing <- getTeamForFixture env userId fixtureId
             _ <- case existing of
-                Just e -> deleteTeam env userId
+                Just e -> deleteTeamForFixture env userId fixtureId
                 Nothing -> logger env DEBUG "No existing team found, creating new one"
             logger env DEBUG $ "START :: adding team " ++ show golferIds ++ " for " ++ show userId
             let team = Team Nothing uid golferIds fixtureId
@@ -93,13 +94,18 @@ getTeamsForUsersAndFixture env userIds fixtureId = do
             logger env DEBUG $ "END :: got teams for " ++ show userIds ++ ": " ++ show resp
             return r
 
-deleteTeam :: Env -> Maybe UserId -> IO ()
-deleteTeam env userId = do
+deleteTeamForFixture :: Env -> Maybe UserId -> FixtureId -> IO ()
+deleteTeamForFixture env userId fixtureId = do
     case userId of
         Nothing -> return ()
         Just _ -> do
             logger env DEBUG $ "START :: deleting team for " ++ show userId
-            resp <- execute (conn env) (getQuery "delete from team where user_id = (?)") [toField userId] 
-            logger env DEBUG $ "END :: deleted team for " ++ show userId ++ ": response: " ++ show resp
-            return ()
+            resp <- try $ execute (conn env) (getQuery "delete from team where user_id = ? and tournament_id = ?") [toField userId, toField fixtureId] :: IO (Either SomeException Int64)
+            case resp of
+                Left e -> do
+                    logger env ERROR $ "failed to delete team " ++ show userId ++ " for tournament: " ++ show fixtureId ++ " - error: " ++ show e
+                    error $ "failed to delete team " ++ show userId ++ " for tournament: " ++ show fixtureId ++ " - error: " ++ show e
+                Right _ -> do
+                    logger env DEBUG $ "END :: deleted team for " ++ show userId ++ " fixture : " ++ show fixtureId
+                    return ()
 
