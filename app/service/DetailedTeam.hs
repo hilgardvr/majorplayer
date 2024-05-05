@@ -22,10 +22,12 @@ data TeamGolfer = TeamGolfer
     , position :: !Int
     , toPar :: !String
     , status :: !String
+    , round :: !Int
+    , hole :: !Int
     } deriving (Show)
 
 instance ToMustache TeamGolfer where
-    toMustache (TeamGolfer id rank name pos toPar status) =
+    toMustache (TeamGolfer id rank name pos toPar status round hole) =
         object 
             [ "id" ~> id
             , "ranking" ~> rank
@@ -33,6 +35,8 @@ instance ToMustache TeamGolfer where
             , "position" ~> pos
             , "toPar" ~> toPar
             , "status" ~> status
+            , "round" ~> round
+            , "hole" ~> hole
             ]
 
 data TeamDetailedDTO = TeamDetailedDTO
@@ -52,10 +56,18 @@ buildDummyTeamDetails :: User.User -> TeamDetailedDTO
 buildDummyTeamDetails user = 
     TeamDetailedDTO 
         { user = user
-        , teamGolfers = replicate 8 $ TeamGolfer (-1) (-1) "No Selection" 100 "100" "No Selection"
+        , teamGolfers = replicate 8 $ TeamGolfer (-1) (-1) "No Selection" 100 "100" "No Selection" (-1) (-1)
         , totalRank = 800
         }
         
+
+leaderboardGolferToTeamGolfer :: Golfer -> LeaderboardGolfer -> TeamGolfer
+leaderboardGolferToTeamGolfer gf lbg =
+    case LeaderboardGolfer.status lbg of
+        "complete" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) (LeaderboardGolfer.position lbg) (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+        "active" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) (LeaderboardGolfer.position lbg) (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+        _ -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) 100 (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+                
 
 buildTeamDetailsDTO :: Env -> [Team.Team] -> [User.User] -> [Golfer] -> [LeaderboardGolfer] -> [TeamDetailedDTO]
 buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams 
@@ -76,20 +88,8 @@ buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams
                 teamGolfers = map (\g ->
                         let leaderboardGolfer = find (\e -> playerId e == Golfer.id g) lg
                         in case leaderboardGolfer of 
-                            Nothing -> 
-                                let pos = 100
-                                    toPar = "N/A"
-                                    status = "N/A"
-                                in
-                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) pos toPar status
-                                -- error $ "Could not find leaderboard golfer " ++ show (Golfer.id g)
-                            Just p -> 
-                                let roundStatus = LeaderboardGolfer.status p
-                                    status = if roundStatus == "complete"
-                                    then "Round: " ++ show (LeaderboardGolfer.currentRound p) ++ " Status: " ++ LeaderboardGolfer.status p
-                                    else "Round: " ++ (show $ LeaderboardGolfer.currentRound p) ++ " - Holes played: " ++ (show $ LeaderboardGolfer.holesPlayed p)
-                                in
-                                    TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) (LeaderboardGolfer.position p) (show $ LeaderboardGolfer.totalToPar p) status
+                            Nothing -> TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) 100 "N/A" "N/A" 0 0
+                            Just p -> leaderboardGolferToTeamGolfer g p
                     ) golfers
 
                 sortedTeamGolfers = sortBy (\a b -> compare (position a) (position b)) teamGolfers

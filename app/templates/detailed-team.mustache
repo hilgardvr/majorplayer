@@ -5,15 +5,19 @@
                 <th>World Ranking</th>
                 <th>Total To Par</th>
                 <th>Current Position</th>
+                <th>Round</th>
+                <th>Hole</th>
                 <th>Status</th>
             </tr>
             {{#teamGolfers}}
                 <tr>
                     <td>{{name}}</td>
-                    <td>{{ranking}}</td>
-                    <td>{{toPar}}</td>
-                    <td>{{position}}</td>
-                    <td>{{status}}</td>
+                    <td style="text-align:center">{{ranking}}</td>
+                    <td style="text-align:center">{{toPar}}</td>
+                    <td style="text-align:center">{{position}}</td>
+                    <td style="text-align:center">{{round}}</td>
+                    <td style="text-align:center">{{hole}}</td>
+                    <td style="text-align:center">{{status}}</td>
                 </tr>
             {{/teamGolfers}}
         </table>
