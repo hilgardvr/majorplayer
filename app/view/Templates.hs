@@ -21,13 +21,14 @@ import Golfer (Golfer)
 import Validation (ValidationError)
 import Env (Env (logger), LogLevel (DEBUG))
 import User (UserId, User (name), Email)
-import League (League (adminId))
+import League (League (adminId), LeagueId)
 import Data.List
 import DetailedTeam (TeamDetailedDTO, TeamGolfer)
 import Fixture (Fixture)
 import GHC.Base (build)
 import Data.UUID (UUID)
 import Network.Wai.Parse (File)
+import qualified Data.UUID as UUID
 
 searchSpace :: [FilePath]
 searchSpace = ["./app/templates"]
@@ -91,12 +92,14 @@ instance ToMustache LeaguesPartial where
 data LeaguePartial = LeaguePartial
     { fixture :: !Fixture
     , teams :: ![TeamDetailedDTO]
+    , leagueId ::UUID
     }
 
 instance ToMustache LeaguePartial where
-    toMustache (LeaguePartial fixture teams) = object
+    toMustache (LeaguePartial fixture teams leagueId) = object
         [ "teams" ~> teams
         , "fixture" ~> fixture
+        , "leagueId" ~> UUID.toString leagueId
         ]
 
 data Disabled = Disabled 
@@ -160,12 +163,13 @@ buildLeaguesPartial env uid ls =
     let (admin, nonAdmin) = partition (\e -> League.adminId e == uid) ls
     in buildTemplate env leaguesPartial (LeaguesPartial admin nonAdmin)
 
-buildLeaguePartial :: Env -> Fixture -> [TeamDetailedDTO] -> IO Text
-buildLeaguePartial env f ts = 
+buildLeaguePartial :: Env -> Fixture -> [TeamDetailedDTO] -> LeagueId -> IO Text
+buildLeaguePartial env f ts lid = 
     buildTemplate env leaguePartial $ 
         LeaguePartial 
             { fixture = f
             , teams = ts
+            , leagueId = lid
             }
 
 buildDetailedTeamPartial :: Env -> TeamDetailedDTO -> IO Text
