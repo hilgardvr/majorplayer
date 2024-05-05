@@ -108,8 +108,7 @@ executable majorplayer
         , aeson == 2.2.1.0
         , bytestring == 0.12.1.0
         , smtp-mail == 0.4.0.0
-        -- , hailgun == 0.5.1
-        --, HaskellNet-SSL == 0.3.4.4
+        , async == 2.2.5
 
     -- Directories containing source files.
     hs-source-dirs:   app

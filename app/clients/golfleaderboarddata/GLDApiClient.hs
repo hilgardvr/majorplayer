@@ -27,6 +27,8 @@ import Leaderboard (LeaderboardGolfer)
 import DataClient (DataClientApi(..))
 import Data.List (sortBy)
 import Utils (getSafeHead)
+import Control.Concurrent.Async (withAsync, Async, poll, async)
+import Control.Concurrent (threadDelay)
 
 data GLDApiClient = GLDApiClient
     { gldRankings :: !(IO [Golfer])
@@ -107,7 +109,7 @@ getGLDFixures env = do
 
 getGLDGolferRankings :: Env -> IO [Golfer]
 getGLDGolferRankings env = do
-    body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable 86400  -- 24h
+    body <- getRawApiResponse env rankingsEndpoint rawGolferRankingTable daySeconds  -- 24h
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe RankingApiResponse
     case decoded of
         Nothing -> do
@@ -120,10 +122,8 @@ getGLDGolferRankings env = do
 
 getGLDLeaderboard :: Env -> FixtureId -> IO [LeaderboardGolfer]
 getGLDLeaderboard env fid = do
-    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 4000 --900 -- 15min
-    -- print $ "raw leaderboard: " ++ take 400 (rawResponse body)
+    body <- getRawApiResponse env (leaderboardEndpoint fid) rawLeaderboardTable 900 -- 15min
     let decoded = Data.Aeson.decode $ BSL.fromString $ rawResponse body :: Maybe ApiLeaderboardResponse
-    -- print decoded
     case decoded of
         Nothing -> do
             logger env ERROR "failed to decode leaderboard from json"
@@ -145,8 +145,8 @@ instance ToRow RawApiResponse where
 instance FromRow RawApiResponse where
     fromRow = RawApiResponse <$> field <*> field <*> field
 
-getCachedResponse :: Env -> TableName -> NominalDiffTime -> IO (Maybe RawApiResponse)
-getCachedResponse env tn timeout = do
+getCachedResponse :: Env -> TableName -> IO (Maybe RawApiResponse)
+getCachedResponse env tn = do
     res <- try $ query_ (conn env) (getQuery $ "select * from " ++ tn ++ " order by created_at desc limit 1") :: IO (Either SomeException [RawApiResponse])
     case res of
         Left e -> do
@@ -155,39 +155,57 @@ getCachedResponse env tn timeout = do
         Right r -> 
             if null r
             then return Nothing
-            else do
-                nowUtc <- getCurrentTime
-                let nowUtcLocal = utcToLocalTime utc nowUtc
-                    diff = diffLocalTime nowUtcLocal $ createdAt $ head r
-                if diff > timeout
-                then return Nothing
-                else return $ Just $ head r
+            else return $ Just $ head r
 
+hitApiAndPersist :: Env -> EndPoint -> TableName -> IO RawApiResponse
+hitApiAndPersist env endpoint table = do
+    logger env INFO ("hitting api " ++ endpoint)
+    initReq <- parseRequest $ gldApiHost env ++ endpoint
+    let req = initReq
+            { method = "GET"
+            , requestHeaders = 
+                [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
+            }
+    res <- httpBS req
+    logger env DEBUG $ " RAW response form endpoint: " ++ endpoint ++ "- Raw: " ++  take 200 (show res)
+    let body = responseBody res
+    dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ table ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
+    case dbRes of 
+        Left e -> do
+            logger env ERROR $ "error inserting into " ++ table ++ ": " ++ show e
+            error $ "error inserting into " ++ table ++ ": " ++ show e
+        Right r -> do
+            logger env DEBUG $ "inserted into " ++ table ++ " - createdAt: " ++ (show . createdAt $ head r)
+            return $ head r
+
+waiter :: Env -> Async RawApiResponse -> IO ()
+waiter env a = do
+    p <- poll a
+    case p of
+        Nothing -> do
+            threadDelay 1000000
+            logger env DEBUG "waiting for raw result..."
+            waiter env a
+        Just r ->
+            case r of
+                Left e -> logger env ERROR $ "error hitting api: " ++ show e
+                Right s -> logger env DEBUG $ "success response from api " ++ (show $ createdAt s)
 
 getRawApiResponse :: Env -> EndPoint -> TableName -> NominalDiffTime -> IO RawApiResponse
 getRawApiResponse env endpoint table cacheTimeout = do
-    cachedMaybe <- getCachedResponse env table cacheTimeout
+    cachedMaybe <- getCachedResponse env table
     case cachedMaybe of
-        Nothing -> do
-            logger env INFO ("no cache received - hitting api " ++ endpoint)
-            initReq <- parseRequest $ gldApiHost env ++ endpoint
-            let req = initReq
-                    { method = "GET"
-                    , requestHeaders = 
-                        [ ("X-RapidAPI-Key", fromString $ gldApiKey env) ]
-                    }
-            res <- httpBS req
-            logger env DEBUG $ endpoint ++ " RAW response: " ++ show res
-            let body = responseBody res
-            dbRes <- try $ query (conn env) (getQuery $ "insert into " ++ table ++ " (raw_response) values (?) returning *") [toField body]  :: IO (Either SomeException [RawApiResponse])
-            case dbRes of 
-                Left e -> do
-                    logger env ERROR $ "error inserting into " ++ table ++ ": " ++ show e
-                    error $ "error inserting into " ++ table ++ ": " ++ show e
-                Right r -> do
-                    logger env DEBUG $ "inserted into " ++ table ++ " - createdAt: " ++ (show . createdAt $ head r)
-                    return $ head r
+        Nothing -> hitApiAndPersist env endpoint table
         Just c -> do
-            logger env DEBUG "found fixures cache"
-            return c
-    
+            nowUtc <- getCurrentTime
+            let nowUtcLocal = utcToLocalTime utc nowUtc
+                diff = diffLocalTime nowUtcLocal $ createdAt c
+            if diff > cacheTimeout
+            then do
+                logger env DEBUG $ "hitting api and using previous cache response with a timing diff of : " ++ show (diff / 60 ) ++ " minutes"
+                ar <- async (hitApiAndPersist env endpoint table) -- $ \r -> do waiter env r
+                logger env DEBUG "hit api - proceeding" 
+                _ <- async $ waiter env ar
+                logger env DEBUG $ "api hit logging triggered - proceeding" 
+                return c
+            else return c
