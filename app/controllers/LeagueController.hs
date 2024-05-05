@@ -73,7 +73,7 @@ leagueRoutes env allGolfers client = do
                     Just s -> pure s
                 leaderboard <- liftIO $ getFixtureLeaderboard client (Fixture.id startedFixture)
                 let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
-                t <- liftIO $ buildLeaguePartial env startedFixture teamDetails
+                t <- liftIO $ buildLeaguePartial env startedFixture teamDetails lid
                 html $ TL.fromStrict t
 
     get "/league/detailed-team/:userId" $ do

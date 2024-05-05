@@ -8,7 +8,7 @@ import Database.PostgreSQL.Simple (ToRow, FromRow, query, query_)
 import Data.ByteString.UTF8 (fromString)
 import Data.UUID (UUID)
 import qualified Data.ByteString.Lazy.UTF8 as BSL
-import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, diffLocalTime, NominalDiffTime, addLocalTime)
+import Data.Time (LocalTime, diffLocalTime, NominalDiffTime, addLocalTime)
 import Database.PostgreSQL.Simple.ToRow (ToRow(toRow))
 import Database.PostgreSQL.Simple.FromRow (FromRow(fromRow), field)
 import Database.PostgreSQL.Simple.ToField (ToField(toField))
@@ -26,8 +26,8 @@ import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), apiToL
 import Leaderboard (LeaderboardGolfer)
 import DataClient (DataClientApi(..))
 import Data.List (sortBy)
-import Utils (getSafeHead)
-import Control.Concurrent.Async (withAsync, Async, poll, async)
+import Utils (getSafeHead, nowUtc, add12h, daySeconds)
+import Control.Concurrent.Async (Async, poll, async)
 import Control.Concurrent (threadDelay)
 
 data GLDApiClient = GLDApiClient
@@ -73,26 +73,18 @@ rawLeaderboardTable = "leaderboard"
 leaderboardEndpoint :: FixtureId -> EndPoint
 leaderboardEndpoint fid = "/leaderboard/" ++ show fid
 
-daySeconds :: NominalDiffTime
-daySeconds = 86400
-
-add12h :: LocalTime -> LocalTime
-add12h = addLocalTime (daySeconds / 2)
 
 getGLDPrePostStartDate :: Env -> IO (Maybe NotStartedFixture, Maybe StartedFixture)
 getGLDPrePostStartDate env = do
     fixtures <- getGLDFixures env
-    nowUtc <- getCurrentTime
-    let nowUtcLocal = utcToLocalTime utc nowUtc
-        sorted  = sortByStartDate fixtures
+    nowUtcLocal <- nowUtc
+    let sorted  = sortByStartDate fixtures
         notStarted = getSafeHead $ dropWhile (\e -> nowUtcLocal > (add12h $ startDate e)) sorted
         started = getSafeHead $ dropWhile (\e -> nowUtcLocal < (add12h $ startDate e)) $ reverse sorted
     pure (notStarted, started)
 
-
 sortByStartDate :: [Fixture] -> [Fixture]
 sortByStartDate = sortBy (\x y -> compare (startDate x) (startDate y))
-
 
 getGLDFixures :: Env -> IO [Fixture]
 getGLDFixures env = do
@@ -197,9 +189,8 @@ getRawApiResponse env endpoint table cacheTimeout = do
     case cachedMaybe of
         Nothing -> hitApiAndPersist env endpoint table
         Just c -> do
-            nowUtc <- getCurrentTime
-            let nowUtcLocal = utcToLocalTime utc nowUtc
-                diff = diffLocalTime nowUtcLocal $ createdAt c
+            nowUtcLocal <- nowUtc
+            let diff = diffLocalTime nowUtcLocal $ createdAt c
             if diff > cacheTimeout
             then do
                 logger env DEBUG $ "hitting api and using previous cache response with a timing diff of : " ++ show (diff / 60 ) ++ " minutes"

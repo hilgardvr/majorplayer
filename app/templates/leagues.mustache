@@ -1,4 +1,6 @@
 <div>
+    <br/>
+    <h3>Leagues Joined</h3>
     {{#adminLeagues}}
         <div>
             <p>
@@ -7,19 +9,27 @@
                     hx-target="#home"
                     ><b>{{ name }}</b>        
                 </button>
-                    Admin - new member join passcode <b>{{passcode}}</b>
+                    You are the league captain - give this passcode to others to join: <b>{{passcode}}</b>
             </p>
         </div>
     {{/adminLeagues}}
-    {{#leagues}}
-        <button
-            hx-get="/league/{{ id }}"
-            hx-target="#home"
-        ><b>{{ name }}</b>
-        </button>
-    {{/leagues}}
+    <div>
+        {{#leagues}}
+            <p>
+                <button
+                    hx-get="/league/{{ id }}"
+                    hx-target="#home"
+                ><b>{{ name }}</b>
+                </button>
+            </p>
+            <br/>
+        {{/leagues}}
+    </div>
+    <br/>
+    <br/>
+    <br/>
     <p>
-        <h4>Join or Create League</h4>
+        <h4>Join or Create New League</h4>
     </p>
     <form>
         <input
@@ -30,7 +40,7 @@
         <button
             hx-post="/join-league"
             hx-target="#home"
-        >Join League</button>
+        >Join A League</button>
     </form>
     <form>
         <div id="league-validation">
@@ -47,7 +57,7 @@
             hx-post="/create-league"
             hx-target="#home"
         >
-            Create League
+            Create A New League
         </button>
     </form>
 </div>

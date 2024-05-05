@@ -6,6 +6,7 @@ module League
 , getLeaguesForUser
 , joinLeague
 , getUserIdsForLeague
+, LeagueId
 )
 where
 import Data.UUID (UUID)

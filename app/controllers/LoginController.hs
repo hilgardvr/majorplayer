@@ -7,21 +7,24 @@ import Golfer (Golfer, filterGolfersById)
 import Env (Env (cookieKey, logger, emailPassword, emailUsername, emailHost), LogLevel (DEBUG, ERROR, WARN))
 import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, captureParam)
 import Player (Player(Player, user, selected, fixture))
-import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie, getCookies)
-import Utils (getUserForSession)
+import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie, getCookies, SetCookie (setCookieExpires, setCookieName, setCookieValue), defaultSetCookie)
+import Utils (getUserForSession, nowUtc, daySeconds)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildIndex, buildLoginCodePartial)
-import qualified Data.Text.Lazy as TL
 import User (getUserByEmail, createUser, User (id, loginCode, email), Email, LoginCode, updateUserLoginCode)
 import Session (createSession, Session (id))
 import qualified Data.UUID as UUID
-import Data.Text (pack, unpack)
+import qualified Data.Text as T --(pack, unpack)
+import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Encoding as TE
+import qualified Data.ByteString.UTF8 as BSU
 import Team (getTeamForFixture, Team (golferIds))
 import Validation (Validatable(validate))
 import Network.Mail.SMTP (Address(Address), simpleMail, plainTextPart, sendMailWithLoginTLS)
 import Text.StringRandom (stringRandomIO)
 import DataClient (DataClientApi(getPrePostStartDate))
 import Fixture (id)
+import Data.Time (addUTCTime, getCurrentTime)
 
 loginRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 loginRoutes env allGolfers client = do
@@ -114,10 +117,12 @@ loginRoutes env allGolfers client = do
             let sessId = case Session.id sess of
                     Nothing -> error "Expecting a session id"
                     Just sid -> sid
-            let c = makeSimpleCookie (cookieKey env) (pack $ UUID.toString sessId)
-            liftIO $ print $ "cookie: " ++ show c
-            _ <- setCookie c
-            liftIO $ print $ "cookie set: " ++ show c
+            now <- liftIO getCurrentTime
+            _ <- setCookie $ defaultSetCookie 
+                { setCookieName = TE.encodeUtf8 $ cookieKey env
+                , setCookieValue = BSU.fromString $ UUID.toString sessId
+                , setCookieExpires = Just (addUTCTime (daySeconds * 365) now)
+                }
             redirect "/"
         else do
             liftIO $ logger env WARN $ "login code does not match for user: " ++ show (User.email user)
@@ -127,12 +132,12 @@ loginRoutes env allGolfers client = do
 generateLoginCode :: IO String
 generateLoginCode = do
     rand <- stringRandomIO "([A-Z]){8}"
-    return $ unpack rand
+    return $ T.unpack rand
 
 sendLoginCodeEmail :: Env -> Email -> LoginCode -> IO ()
 sendLoginCodeEmail env email loginCode = do
-    let fromAddress = Address (Just (pack "MajorPlayer")) (pack "no-reply@majorplayer.com")
-        toAddress = Address Nothing (pack email)
+    let fromAddress = Address (Just (T.pack "MajorPlayer")) (T.pack "no-reply@majorplayer.com")
+        toAddress = Address Nothing (T.pack email)
         mailBody = plainTextPart (TL.pack loginCode)
-        mail = simpleMail fromAddress [toAddress] [] [] (pack "MajorPlayer Login Code") [mailBody]
+        mail = simpleMail fromAddress [toAddress] [] [] (T.pack "MajorPlayer Login Code") [mailBody]
     sendMailWithLoginTLS (emailHost env) (emailUsername env) (emailPassword env) mail

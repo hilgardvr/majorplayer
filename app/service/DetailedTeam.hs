@@ -96,7 +96,7 @@ buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams
                 totalRank = foldr (\e a -> position e + a) 0 teamGolfers
             in 
                 TeamDetailedDTO 
-                { user = user
-                , teamGolfers = sortedTeamGolfers
-                , totalRank = totalRank
-                }
+                    { user = user
+                    , teamGolfers = sortedTeamGolfers
+                    , totalRank = totalRank
+                    }

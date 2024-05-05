@@ -5,6 +5,9 @@ module Utils
 , mapMaybe
 , getUserForSession
 , getDraftTeamGolfers
+, nowUtc
+, add12h
+, daySeconds
 ) where
 import User (User (id), getUserById)
 import Data.Text (Text, unpack)
@@ -14,6 +17,7 @@ import qualified Data.UUID as UUID
 import Session (getSessionById, Session (userId))
 import Golfer (Golfer (id))
 import DraftTeam (getDraftTeam, DraftTeam (golferId))
+import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, NominalDiffTime, addLocalTime)
 
 getSafeHead :: [a] -> Maybe a
 getSafeHead [] = Nothing
@@ -47,3 +51,12 @@ getDraftTeamGolfers env g u = do
     let draftTeamIds = map DraftTeam.golferId draftTeam
         (selected, notSelected) = partition (\e -> (Golfer.id e) `elem` draftTeamIds) g
     return (selected, notSelected)
+
+nowUtc :: IO LocalTime
+nowUtc = do utcToLocalTime utc <$> getCurrentTime
+
+daySeconds :: NominalDiffTime
+daySeconds = 86400
+
+add12h :: LocalTime -> LocalTime
+add12h = addLocalTime (daySeconds / 2)

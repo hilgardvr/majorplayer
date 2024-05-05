@@ -1,5 +1,9 @@
 <div>
     <p><b>{{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
+    <button
+            hx-get="/league/{{leagueId}}"
+            hx-target="#home"
+            >Refresh Scores</button>
     {{#teams}}
         <p>
             <button
