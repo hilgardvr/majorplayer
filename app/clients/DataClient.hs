@@ -10,4 +10,7 @@ class DataClientApi a where
     getFixures :: a -> IO [Fixture]
     getFixtureLeaderboard :: a -> FixtureId -> IO [LeaderboardGolfer]
     getPrePostStartDate :: a -> IO (Maybe NotStartedFixture, Maybe StartedFixture)
+    refreshRankings :: a -> IO ()
+    refreshLeaderboard :: a -> IO ()
+    refreshFixtures :: a -> IO ()
 

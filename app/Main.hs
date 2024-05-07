@@ -12,7 +12,7 @@ import Jobs (executeScheduleJobs)
 app :: Env -> IO ()
 app env = do
     let client = getGLDClient env
-    --tids <- executeScheduleJobs env client
+    _ <- executeScheduleJobs env client
     allGolfers <- getGolferRankings client
     scotty 3000 $ do
         middleware logStdout

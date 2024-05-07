@@ -20,28 +20,32 @@ import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
 import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
-import Fixture (FixtureAPIResponse (results), Fixture (startDate), FixtureId, NotStartedFixture, StartedFixture)
+import Fixture (FixtureAPIResponse (results), Fixture (startDate, Fixture, id), FixtureId, NotStartedFixture, StartedFixture)
 import qualified GLDApiRankings as RankingApiResponse
 import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), apiToLeaderboardGolfer)
 import Leaderboard (LeaderboardGolfer)
 import DataClient (DataClientApi(..))
 import Data.List (sortBy)
 import Utils (getSafeHead, nowUtc, add12h, daySeconds)
-import Control.Concurrent.Async (Async, poll, async)
-import Control.Concurrent (threadDelay)
 
 data GLDApiClient = GLDApiClient
     { gldRankings :: !(IO [Golfer])
     , gldFixtures :: !(IO [Fixture])
     , gldLeaderboard :: !(FixtureId -> IO [LeaderboardGolfer])
     , gldGetPrePostStartDate :: !(IO (Maybe Fixture, Maybe Fixture))
+    , gldRefreshRankings :: !(IO ())
+    , gldRefreshLeaderboard :: !(IO ())
+    , gldRefreshFixtures :: !(IO ())
     }
 
 instance DataClientApi GLDApiClient where
-    getGolferRankings (GLDApiClient r _ _ _) = r
-    getFixures (GLDApiClient _ f _ _) = f
-    getFixtureLeaderboard (GLDApiClient _ _ l _) = l
-    getPrePostStartDate (GLDApiClient _ _ _ pp) = pp
+    getGolferRankings (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = rankings
+    getFixures (GLDApiClient rankings fixtures leaderboard dates refRankings refLeader refFix) = fixtures
+    getFixtureLeaderboard (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = leaderboard
+    getPrePostStartDate (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = dates
+    refreshRankings (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = refRankings
+    refreshLeaderboard (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = refLeader
+    refreshFixtures (GLDApiClient rankings fixures leaderboard dates refRankings refLeader refFix) = refFix
 
 getGLDClient :: Env -> GLDApiClient
 getGLDClient env =
@@ -50,6 +54,9 @@ getGLDClient env =
         , gldFixtures = getGLDFixures env
         , gldLeaderboard = getGLDLeaderboard env
         , gldGetPrePostStartDate = getGLDPrePostStartDate env
+        , gldRefreshFixtures = refreshGLDFixtures env
+        , gldRefreshRankings = refreshGLDRankings env
+        , gldRefreshLeaderboard = refreshGLDLeaderboard env
         }
 
 type TableName = String
@@ -98,6 +105,30 @@ getGLDFixures env = do
             logger env INFO "parsed json fixures success"
             return $ Fixture.results fs
     
+
+refreshGLDRankings :: Env -> IO ()
+refreshGLDRankings env = do
+    logger env INFO "START :: refreshed rankings"
+    res <- hitApiAndPersist env rankingsEndpoint rawGolferRankingTable
+    logger env INFO "END :: refreshed rankings"
+
+refreshGLDLeaderboard :: Env -> IO ()
+refreshGLDLeaderboard env = do
+    (_, started) <- getGLDPrePostStartDate env
+    case started of
+        Nothing -> do
+            logger env ERROR "no started fixure - not refreshing leaderboard"
+            error "no started fixure - not refreshing leaderboard"
+        Just s -> do
+            logger env INFO "START :: refresh leaderboard"
+            res <- hitApiAndPersist env (leaderboardEndpoint $ Fixture.id s) rawLeaderboardTable
+            logger env INFO "END :: refreshed leaderboard"
+
+refreshGLDFixtures :: Env -> IO ()
+refreshGLDFixtures env = do
+    logger env INFO "START :: refresh fixtures"
+    res <- hitApiAndPersist env (fixturesEndpoint $ season env) rawFixtureTable
+    logger env INFO "END :: refreshed fixtures"
 
 getGLDGolferRankings :: Env -> IO [Golfer]
 getGLDGolferRankings env = do
@@ -170,33 +201,9 @@ hitApiAndPersist env endpoint table = do
             logger env DEBUG $ "inserted into " ++ table ++ " - createdAt: " ++ (show . createdAt $ head r)
             return $ head r
 
-waiter :: Env -> Async RawApiResponse -> IO ()
-waiter env a = do
-    p <- poll a
-    case p of
-        Nothing -> do
-            threadDelay 1000000
-            logger env DEBUG "waiting for raw result..."
-            waiter env a
-        Just r ->
-            case r of
-                Left e -> logger env ERROR $ "error hitting api: " ++ show e
-                Right s -> logger env DEBUG $ "success response from api " ++ (show $ createdAt s)
-
 getRawApiResponse :: Env -> EndPoint -> TableName -> NominalDiffTime -> IO RawApiResponse
-getRawApiResponse env endpoint table cacheTimeout = do
+getRawApiResponse env endpoint table _ = do
     cachedMaybe <- getCachedResponse env table
     case cachedMaybe of
         Nothing -> hitApiAndPersist env endpoint table
-        Just c -> do
-            nowUtcLocal <- nowUtc
-            let diff = diffLocalTime nowUtcLocal $ createdAt c
-            if diff > cacheTimeout
-            then do
-                logger env DEBUG $ "hitting api and using previous cache response with a timing diff of : " ++ show (diff / 60 ) ++ " minutes"
-                ar <- async (hitApiAndPersist env endpoint table) -- $ \r -> do waiter env r
-                logger env DEBUG "hit api - proceeding" 
-                _ <- async $ waiter env ar
-                logger env DEBUG $ "api hit logging triggered - proceeding" 
-                return c
-            else return c
+        Just c -> pure c
