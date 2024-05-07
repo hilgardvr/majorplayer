@@ -11,6 +11,8 @@ import Data.Time (LocalTime)
 import GLDApiMeta (ApiMeta)
 import Data.Aeson (FromJSON (parseJSON), withObject, (.:) )
 import Text.Mustache (ToMustache (toMustache), object, (~>))
+import Data.Text (Text)
+import qualified Codec.Binary.UTF8.Generic as T
 
 type FixtureId = Int
 type TourId = Int
@@ -70,6 +72,6 @@ instance ToMustache Fixture where
         , "course" ~> course
         , "prize" ~> prize
         , "prizeCurrency" ~> prizeCurrency
-        , "start" ~> show startDate
+        , "start" ~> toMustache (show startDate ++ " GMT")
         ]
 

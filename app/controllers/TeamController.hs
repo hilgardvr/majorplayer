@@ -4,10 +4,10 @@ module TeamController
 ( teamRoutes
 ) where
 
-import Env (Env (cookieKey, logger), LogLevel (DEBUG, ERROR, WARN))
+import Env (Env (cookieKey, logger), LogLevel (DEBUG, ERROR, WARN, INFO))
 import Web.Scotty (ScottyM, get, html, redirect, post, capture, put, captureParam, param)
 import Web.Scotty.Cookie (getCookie)
-import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe)
+import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe, daySeconds)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildSelectTeamPartial, buildTeamPage, buildFilteredGolfers, buildDisabledPartial)
 import qualified Data.Text.Lazy as TL
@@ -20,8 +20,8 @@ import User (id, updateUserDetails)
 import Data.Char (toLower)
 import Data.List (isInfixOf)
 import DataClient (DataClientApi (getPrePostStartDate))
-import Data.Time (getCurrentTime, utc, utcToLocalTime)
-import Fixture (name, Fixture (id))
+import Fixture (Fixture (id, startDate))
+import Data.Time (addLocalTime)
 
 teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 teamRoutes env allGolfers client = do
@@ -58,7 +58,8 @@ teamRoutes env allGolfers client = do
                         Just u -> pure u
                 (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
                 --liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
-                let player = Player u selected f
+                let updatedStartDate = f { startDate = addLocalTime (daySeconds / 2) (startDate f) }
+                    player = Player u selected updatedStartDate
                     validated = validate player
                     ut = UserTemplate (Just player) notSelected validated
                 t <- liftIO $ buildSelectTeamPartial env ut
@@ -141,14 +142,16 @@ teamRoutes env allGolfers client = do
                 html $ TL.fromStrict t
             Just fixture -> do
                 team <- liftIO $ getTeamForFixture env (User.id user') (Fixture.id fixture)
+                let updatedTimeFixture = fixture { startDate = addLocalTime (daySeconds / 2) (startDate fixture) }
+                liftIO $ logger env INFO $ "updated start date = " ++ show updatedTimeFixture
                 case team of
                     Nothing -> do
                         liftIO $ logger env WARN ("No team found to display for " ++ (show $ User.id user'))
-                        t <- liftIO $ buildTeamPage env $ Player user' [] fixture
+                        t <- liftIO $ buildTeamPage env $ Player user' [] updatedTimeFixture
                         html $ TL.fromStrict t
                     Just t -> do
                         let playerTeam = filter (\e -> elem (Golfer.id e) (Team.golferIds t)) allGolfers
-                        t <- liftIO $ buildTeamPage env $ Player user' playerTeam fixture
+                        t <- liftIO $ buildTeamPage env $ Player user' playerTeam updatedTimeFixture
                         html $ TL.fromStrict t
 
     get "/filter-available" $ do

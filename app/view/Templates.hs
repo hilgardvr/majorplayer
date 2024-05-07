@@ -23,11 +23,9 @@ import Env (Env (logger), LogLevel (DEBUG))
 import User (UserId, User (name), Email)
 import League (League (adminId), LeagueId)
 import Data.List
-import DetailedTeam (TeamDetailedDTO, TeamGolfer)
+import DetailedTeam (TeamDetailedDTO)
 import Fixture (Fixture)
-import GHC.Base (build)
 import Data.UUID (UUID)
-import Network.Wai.Parse (File)
 import qualified Data.UUID as UUID
 
 searchSpace :: [FilePath]

@@ -23,8 +23,8 @@ import Validation (Validatable(validate))
 import Network.Mail.SMTP (Address(Address), simpleMail, plainTextPart, sendMailWithLoginTLS)
 import Text.StringRandom (stringRandomIO)
 import DataClient (DataClientApi(getPrePostStartDate))
-import Fixture (id)
-import Data.Time (addUTCTime, getCurrentTime)
+import Fixture (id, Fixture (startDate))
+import Data.Time (addUTCTime, getCurrentTime, addLocalTime)
 
 loginRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 loginRoutes env allGolfers client = do
@@ -76,10 +76,11 @@ loginRoutes env allGolfers client = do
                 let (teamSelected, notSelected) = case team of
                         Nothing -> ([], allGolfers)
                         Just t -> filterGolfersById (Team.golferIds t) allGolfers
+                    updatedTimeNotStartedFixture = notStartedFixture { startDate = addLocalTime (daySeconds / 2) (startDate notStartedFixture) }
                 let player = Player 
                         { user = u
                         , selected = teamSelected
-                        , fixture = notStartedFixture
+                        , fixture = updatedTimeNotStartedFixture
                         }
                     validated = validate player
                 t <- liftIO $ buildIndex env $ UserTemplate (Just player) notSelected validated
