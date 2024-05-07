@@ -7,10 +7,12 @@ import LeagueController (leagueRoutes)
 import Env (Env, getAppEnv)
 import GLDApiClient (getGLDClient)
 import DataClient (DataClientApi(getGolferRankings))
+import Jobs (executeScheduleJobs)
 
 app :: Env -> IO ()
 app env = do
     let client = getGLDClient env
+    tids <- executeScheduleJobs env client
     allGolfers <- getGolferRankings client
     scotty 3000 $ do
         middleware logStdout
