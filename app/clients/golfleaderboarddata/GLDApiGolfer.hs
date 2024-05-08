@@ -25,4 +25,4 @@ instance FromJSON ApiGolfer where
 
 
 toGolfer :: ApiGolfer -> Golfer
-toGolfer (ApiGolfer i r n) = Golfer i r n
+toGolfer (ApiGolfer i r n) = Golfer i r n False

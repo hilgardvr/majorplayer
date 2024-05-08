@@ -23,6 +23,16 @@
                 >
                 {{ranking}} - {{name}}
             </button>
+                {{#captain}}
+                    <b>Captain</b>
+                {{/captain}}
+                {{^captain}}
+                    <button
+                        hx-put="/draft-team/captain/{{id}}"
+                        hx-target="#home"
+                    >Set As Captain
+                    </button>
+                {{/captain}}
         </div>
     {{/player.selected}}
     <h3>Pick your golfers</h3>

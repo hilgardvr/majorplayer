@@ -33,10 +33,18 @@
             hx-get="/change-team"
             hx-target="#home"
             >Pick Team</button>
+
     </div>
     {{#selected}}
-        <div>
-            {{ranking}} - {{name}}
-        </div>
+        {{#captain}}
+            <div>
+                {{ranking}} - {{name}} <b>Captain</b>
+            </div>
+        {{/captain}}
+        {{^captain}}
+            <div>
+                {{ranking}} - {{name}}
+            </div>
+        {{/captain}}
     {{/selected}}
 </div>

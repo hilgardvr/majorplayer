@@ -6,6 +6,7 @@ module Team
 , getTeamForFixture
 , deleteTeamForFixture
 , getTeamsForUsersAndFixture
+, CaptainId
 ) where
 import Data.UUID (UUID)
 import User (UserId)
@@ -17,48 +18,43 @@ import Database.PostgreSQL.Simple.ToField (ToField(toField))
 import Repo (getQuery)
 import Database.PostgreSQL.Simple.FromRow (field, FromRow (fromRow))
 import Database.PostgreSQL.Simple.Types (PGArray(fromPGArray, PGArray))
-import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Control.Exception (SomeException, try)
 import Fixture (FixtureId)
 import Data.Int (Int64)
 
+type CaptainId = GolferId
 
 data Team = Team
     { id :: !(Maybe UUID)
     , userId :: !UserId
     , golferIds :: ![GolferId]
     , tournamentId :: !FixtureId
+    , captain :: !GolferId
     } deriving (Show, Eq)
 
 
 instance ToRow Team where
-    toRow (Team i u g t) = case i of
-        Nothing -> [toField u, toField $ PGArray g, toField t]
-        Just i' -> toRow (i', u, PGArray g, t)
+    toRow (Team i u g t c) = case i of
+        Nothing -> [toField u, toField $ PGArray g, toField t, toField c]
+        Just i' -> toRow (i', u, PGArray g, t, c)
 
 instance FromRow Team where
-    fromRow = Team <$> field <*> field <*> (fromPGArray <$> field) <*> field
+    fromRow = Team <$> field <*> field <*> (fromPGArray <$> field) <*> field <*> field
 
-instance ToMustache Team where
-    toMustache (Team i uid gids ti) = object
-        [ "userId" ~> show uid
-        , "golferIds" ~> gids
-        , "tournamentId" ~> ti
-        ]
-
-
-addTeam :: Env -> [GolferId] -> FixtureId -> Maybe UserId -> IO ()
-addTeam env golferIds fixtureId userId = do
+addTeam :: Env -> [GolferId] -> FixtureId -> Maybe UserId -> CaptainId -> IO ()
+addTeam env golferIds fixtureId userId captainId = do
     case userId of
-        Nothing -> return ()
+        Nothing -> do
+            logger env ERROR "no user id supplied, not persisting team"
+            return ()
         Just uid -> do
             existing <- getTeamForFixture env userId fixtureId
             _ <- case existing of
                 Just e -> deleteTeamForFixture env userId fixtureId
                 Nothing -> logger env DEBUG "No existing team found, creating new one"
             logger env DEBUG $ "START :: adding team " ++ show golferIds ++ " for " ++ show userId
-            let team = Team Nothing uid golferIds fixtureId
-            resp <- execute (conn env) (getQuery "insert into team (user_id, golfer_ids, tournament_id) values (?,?,?)") team
+            let team = Team Nothing uid golferIds fixtureId captainId
+            resp <- execute (conn env) (getQuery "insert into team (user_id, golfer_ids, tournament_id, captain_id) values (?,?,?,?)") team
             logger env DEBUG $ "END :: added team " ++ show golferIds ++ " for " ++ show userId ++ " - resp: " ++ show resp
             return ()
 

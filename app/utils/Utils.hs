@@ -8,16 +8,18 @@ module Utils
 , nowUtc
 , add12h
 , daySeconds
+, getTeamGolfers
 ) where
 import User (User (id), getUserById)
 import Data.Text (Text, unpack)
-import Data.List (partition)
+import Data.List (partition, find)
 import Env (Env (logger), LogLevel (DEBUG, ERROR))
 import qualified Data.UUID as UUID
 import Session (getSessionById, Session (userId))
-import Golfer (Golfer (id))
-import DraftTeam (getDraftTeam, DraftTeam (golferId))
+import Golfer (Golfer (id, captain))
+import DraftTeam (getDraftTeam, golferId, captain)
 import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, NominalDiffTime, addLocalTime)
+import Team (Team (golferIds, captain))
 
 getSafeHead :: [a] -> Maybe a
 getSafeHead [] = Nothing
@@ -47,10 +49,21 @@ getUserForSession env cookie = do
 getDraftTeamGolfers :: Env -> [Golfer] -> User -> IO ([Golfer], [Golfer])
 getDraftTeamGolfers env g u = do
     draftTeam <- getDraftTeam env (User.id u)
-    logger env DEBUG $ show  draftTeam
     let draftTeamIds = map DraftTeam.golferId draftTeam
         (selected, notSelected) = partition (\e -> (Golfer.id e) `elem` draftTeamIds) g
-    return (selected, notSelected)
+        captainedSelected = 
+            map (\s -> 
+                case find (\e -> DraftTeam.golferId e == Golfer.id s) draftTeam of
+                    Nothing -> s
+                    Just f -> s { Golfer.captain = DraftTeam.captain f }
+            ) selected
+    return (captainedSelected, notSelected)
+
+getTeamGolfers :: [Golfer] -> Team -> [Golfer]
+getTeamGolfers gs t =
+    let playerTeam = filter (\e -> Golfer.id e `elem` Team.golferIds t) gs
+    in map (\p -> p { Golfer.captain = Team.captain t == Golfer.id p }) playerTeam 
+    
 
 nowUtc :: IO LocalTime
 nowUtc = do utcToLocalTime utc <$> getCurrentTime
