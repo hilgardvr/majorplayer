@@ -20,7 +20,7 @@ import Network.HTTP.Simple (httpBS)
 import Golfer (Golfer(..))
 import GLDApiRankings (RankingApiResponse, ApiRankings (rankings))
 import GLDApiGolfer (toGolfer)
-import Fixture (FixtureAPIResponse (results), Fixture (startDate), FixtureId, NotStartedFixture, StartedFixture)
+import Fixture (FixtureAPIResponse (results), Fixture (startDate, id), FixtureId, NotStartedFixture, StartedFixture)
 import qualified GLDApiRankings as RankingApiResponse
 import GLDApiLeaderboard (ApiLeaderboardResponse(..), ApiLeaderboard(..), apiToLeaderboardGolfer)
 import Leaderboard (LeaderboardGolfer)
@@ -80,7 +80,7 @@ getGLDPrePostStartDate env = do
     nowUtcLocal <- nowUtc
     let sorted  = sortByStartDate fixtures
         notStarted = getSafeHead $ dropWhile (\e -> nowUtcLocal > (add12h $ startDate e)) sorted
-        started = getSafeHead $ dropWhile (\e -> nowUtcLocal < (add12h $ startDate e)) $ reverse sorted
+        started = getSafeHead $ dropWhile (\e -> nowUtcLocal < (add12h $ startDate e) || Fixture.id e == 656) $ reverse sorted
     pure (notStarted, started)
 
 sortByStartDate :: [Fixture] -> [Fixture]
