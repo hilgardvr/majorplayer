@@ -7,13 +7,14 @@ module DetailedTeam
 , buildDummyTeamDetails
 ) where
 import User (User(..))
-import Golfer (id, Golfer (name, ranking), GolferId, Ranking, GolferName)
+import Golfer (id, name, ranking, Golfer, captain, GolferId, Ranking, GolferName)
 import Text.Mustache (ToMustache (toMustache), object, (~>))
 import Env (Env)
 import Data.List (find, sortBy)
 import Team (Team(..))
 import Leaderboard (LeaderboardGolfer (playerId))
 import qualified Leaderboard as LeaderboardGolfer
+import Utils (getTeamGolfers)
 
 data TeamGolfer = TeamGolfer
     { id :: !GolferId
@@ -61,12 +62,18 @@ buildDummyTeamDetails user =
         }
         
 
-leaderboardGolferToTeamGolfer :: Golfer -> LeaderboardGolfer -> TeamGolfer
-leaderboardGolferToTeamGolfer gf lbg =
-    case LeaderboardGolfer.status lbg of
-        "complete" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) (LeaderboardGolfer.position lbg) (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
-        "active" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) (LeaderboardGolfer.position lbg) (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
-        _ -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) 100 (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+detailedGolferToLeaderboardGolfer :: Golfer -> LeaderboardGolfer -> TeamGolfer
+detailedGolferToLeaderboardGolfer gf lbg =
+    let 
+        pos = 
+            if Golfer.captain gf && (LeaderboardGolfer.position lbg == 1)
+            then (-100)
+            else LeaderboardGolfer.position lbg
+    in
+        case LeaderboardGolfer.status lbg of
+            "complete" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) pos (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+            "active" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) pos (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
+            _ -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) 100 (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg)
                 
 
 buildTeamDetailsDTO :: Env -> [Team.Team] -> [User.User] -> [Golfer] -> [LeaderboardGolfer] -> [TeamDetailedDTO]
@@ -83,17 +90,18 @@ buildTeamDetailsDTO env teams users gs lg = map toTeamDto teams
                 user = case userMaybe of
                     Nothing -> error "could not find user with id"
                     Just u' -> u'
-                golfers = filter (\g -> elem (Golfer.id g) (golferIds team)) gs
-                teamGolfers :: [TeamGolfer]
-                teamGolfers = map (\g ->
+                --golfers = filter (\g -> Golfer.id g `elem` golferIds team) gs
+                teamGolfers = getTeamGolfers gs team
+                detailedTeamGolfers :: [TeamGolfer]
+                detailedTeamGolfers = map (\g ->
                         let leaderboardGolfer = find (\e -> playerId e == Golfer.id g) lg
                         in case leaderboardGolfer of 
                             Nothing -> TeamGolfer (Golfer.id g) (Golfer.ranking g) (Golfer.name g) 100 "N/A" "N/A" 0 0
-                            Just p -> leaderboardGolferToTeamGolfer g p
-                    ) golfers
+                            Just lg' -> detailedGolferToLeaderboardGolfer g lg'
+                    ) teamGolfers
 
-                sortedTeamGolfers = sortBy (\a b -> compare (position a) (position b)) teamGolfers
-                totalRank = foldr (\e a -> position e + a) 0 teamGolfers
+                sortedTeamGolfers = sortBy (\a b -> compare (position a) (position b)) detailedTeamGolfers
+                totalRank = foldr (\e a -> position e + a) 0 detailedTeamGolfers
             in 
                 TeamDetailedDTO 
                     { user = user

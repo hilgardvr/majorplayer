@@ -8,7 +8,7 @@ import Env (Env (cookieKey, logger, emailPassword, emailUsername, emailHost), Lo
 import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, captureParam)
 import Player (Player(Player, user, selected, fixture))
 import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie, getCookies, SetCookie (setCookieExpires, setCookieName, setCookieValue), defaultSetCookie)
-import Utils (getUserForSession, nowUtc, daySeconds)
+import Utils (getUserForSession, nowUtc, daySeconds, getTeamGolfers)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildIndex, buildLoginCodePartial)
 import User (getUserByEmail, createUser, User (id, loginCode, email), Email, LoginCode, updateUserLoginCode)
@@ -75,7 +75,10 @@ loginRoutes env allGolfers client = do
                 team <- liftIO $ getTeamForFixture env (User.id u) (Fixture.id notStartedFixture)
                 let (teamSelected, notSelected) = case team of
                         Nothing -> ([], allGolfers)
-                        Just t -> filterGolfersById (Team.golferIds t) allGolfers
+                        Just t -> 
+                            let (sel, notSel) = filterGolfersById (Team.golferIds t) allGolfers
+                                captainedTeam = getTeamGolfers sel t
+                            in (captainedTeam, notSel)
                     updatedTimeNotStartedFixture = notStartedFixture { startDate = addLocalTime (daySeconds / 2) (startDate notStartedFixture) }
                 let player = Player 
                         { user = u

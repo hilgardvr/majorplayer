@@ -11,7 +11,7 @@ import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe, daySeconds, getT
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildSelectTeamPartial, buildTeamPage, buildFilteredGolfers, buildDisabledPartial)
 import qualified Data.Text.Lazy as TL
-import Team (getTeamForFixture, Team (golferIds), addTeam)
+import Team (getTeamForFixture, addTeam)
 import Validation (Validatable(validate))
 import Golfer (Golfer (name, id), GolferId)
 import Player (Player(Player))
@@ -38,11 +38,9 @@ teamRoutes env allGolfers client = do
                 liftIO $ logger env ERROR $ "Expected to find a user with id for session: " ++ show c
                 error $ "Expected to find a user with id for session: " ++ show c
             Just uid -> do
-                userName <- param "user-name"
-                teamName <- param "team-name"
-                liftIO $ updateUserDetails env uid userName teamName
-                liftIO $ putStrLn userName
-                liftIO $ putStrLn teamName
+                userName <- captureParam "user-name"
+                teamName <- captureParam "team-name"
+                _ <- liftIO $ updateUserDetails env uid userName teamName
                 redirect "/"
 
     get "/change-team" $ do
@@ -58,7 +56,6 @@ teamRoutes env allGolfers client = do
                         Nothing -> redirect "/"
                         Just u -> pure u
                 (selected, notSelected) <- liftIO $ getDraftTeamGolfers env allGolfers u
-                --liftIO $ logger env DEBUG $ "Selected: " ++ (show $ length selected)
                 let updatedStartDate = f { startDate = addLocalTime (daySeconds / 2) (startDate f) }
                     player = Player u selected updatedStartDate
                     validated = validate player
