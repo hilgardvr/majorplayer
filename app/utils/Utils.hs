@@ -9,6 +9,7 @@ module Utils
 , add12h
 , daySeconds
 , getTeamGolfers
+, generateLoginCode
 ) where
 import User (User (id), getUserById)
 import Data.Text (Text, unpack)
@@ -20,6 +21,8 @@ import Golfer (Golfer (id, captain))
 import DraftTeam (getDraftTeam, golferId, captain)
 import Data.Time (LocalTime, getCurrentTime, utc, utcToLocalTime, NominalDiffTime, addLocalTime)
 import Team (Team (golferIds, captain))
+import Text.StringRandom (stringRandomIO)
+import qualified Data.Text as T
 
 getSafeHead :: [a] -> Maybe a
 getSafeHead [] = Nothing
@@ -27,6 +30,11 @@ getSafeHead (x:_) = Just x
 
 mapMaybe :: (a -> Maybe b) -> Maybe a -> Maybe b
 mapMaybe f a = f =<< a
+
+generateLoginCode :: IO String
+generateLoginCode = do
+    rand <- stringRandomIO "([A-Z]){8}"
+    return $ T.unpack rand
 
 getUserForSession :: Env -> Maybe Text -> IO (Maybe User)
 getUserForSession env cookie = do

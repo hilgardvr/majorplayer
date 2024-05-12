@@ -8,7 +8,7 @@ import Env (Env (cookieKey, logger, emailPassword, emailUsername, emailHost), Lo
 import Web.Scotty (ScottyM, ActionM, get, html, redirect, post, formParam, captureParam)
 import Player (Player(Player, user, selected, fixture))
 import Web.Scotty.Cookie (getCookie, makeSimpleCookie, setCookie, deleteCookie, getCookies, SetCookie (setCookieExpires, setCookieName, setCookieValue), defaultSetCookie)
-import Utils (getUserForSession, nowUtc, daySeconds, getTeamGolfers)
+import Utils (getUserForSession, nowUtc, daySeconds, getTeamGolfers, generateLoginCode)
 import Control.Monad.IO.Class (MonadIO(liftIO))
 import Templates (UserTemplate(UserTemplate), buildIndex, buildLoginCodePartial)
 import User (getUserByEmail, createUser, User (id, loginCode, email), Email, LoginCode, updateUserLoginCode)
@@ -21,7 +21,6 @@ import qualified Data.ByteString.UTF8 as BSU
 import Team (getTeamForFixture, Team (golferIds))
 import Validation (Validatable(validate))
 import Network.Mail.SMTP (Address(Address), simpleMail, plainTextPart, sendMailWithLoginTLS)
-import Text.StringRandom (stringRandomIO)
 import DataClient (DataClientApi(getPrePostStartDate))
 import Fixture (id, Fixture (startDate))
 import Data.Time (addUTCTime, getCurrentTime, addLocalTime)
@@ -132,11 +131,6 @@ loginRoutes env allGolfers client = do
             liftIO $ logger env WARN $ "login code does not match for user: " ++ show (User.email user)
             redirect "/"
 
-
-generateLoginCode :: IO String
-generateLoginCode = do
-    rand <- stringRandomIO "([A-Z]){8}"
-    return $ T.unpack rand
 
 sendLoginCodeEmail :: Env -> Email -> LoginCode -> IO ()
 sendLoginCodeEmail env email loginCode = do

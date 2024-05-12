@@ -2,22 +2,7 @@
     <h2>Next Tournament: {{fixture.name}}</h2>
     <h3>Deadline: {{fixture.start}}</h3>
     {{^user.teamName}}
-        <h3>Please Set Your Name And Team Name</h3>
-        <form method="post" action="/save-user-details">
-            <input
-                    name="user-name"
-                    type="text"
-                    placeholder="My Name"
-                    value=""
-            />
-            <input
-                    name="team-name"
-                    type="text"
-                    placeholder="My Team Name"
-                    value=""
-            />
-            <input type="submit"/>
-        </form>
+        {{> user-details.mustache}}
     {{/user.teamName}}
     {{#user.teamName}}
         <h3>{{.}}</h3>

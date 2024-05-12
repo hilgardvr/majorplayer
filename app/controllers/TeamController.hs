@@ -5,7 +5,7 @@ module TeamController
 ) where
 
 import Env (Env (cookieKey, logger), LogLevel (DEBUG, ERROR, WARN, INFO))
-import Web.Scotty (ScottyM, get, html, redirect, post, capture, put, captureParam, param)
+import Web.Scotty (ScottyM, get, html, redirect, post, capture, put, captureParam, param, formParam)
 import Web.Scotty.Cookie (getCookie)
 import Utils (getUserForSession, getDraftTeamGolfers, mapMaybe, daySeconds, getTeamGolfers)
 import Control.Monad.IO.Class (MonadIO(liftIO))
@@ -28,18 +28,19 @@ teamRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
 teamRoutes env allGolfers client = do
 
     post "/save-user-details" $ do
+        liftIO $ logger env DEBUG "haere"
         c <- getCookie (cookieKey env)
         user <- liftIO $ getUserForSession env c
         u <- case user of
             Nothing -> redirect "/"
             Just u -> pure u
-        case (User.id u) of
+        case User.id u of
             Nothing -> do
                 liftIO $ logger env ERROR $ "Expected to find a user with id for session: " ++ show c
                 error $ "Expected to find a user with id for session: " ++ show c
             Just uid -> do
-                userName <- captureParam "user-name"
-                teamName <- captureParam "team-name"
+                userName <- formParam "user-name"
+                teamName <- formParam "team-name"
                 _ <- liftIO $ updateUserDetails env uid userName teamName
                 redirect "/"
 
