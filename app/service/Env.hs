@@ -59,39 +59,45 @@ readAndSet fp = do
 
 setEnvVars :: IO ()
 setEnvVars = do
-    env <- lookupEnv "MAJOR_APP_ENV"
-    let runTimeEnv = case env of
-            Nothing -> DEV
-            Just e -> read e :: AppEnv
+    runTimeEnv <- getRuntimeEnv
     case runTimeEnv of
         DEV -> do
             _ <- readAndSet devEnvFile
             readAndSet devEnvSecretFile
         PROD -> readAndSet prodEnvFile
 
+getRuntimeEnv :: IO AppEnv
+getRuntimeEnv = do
+    env <- lookupEnv "MAJOR_APP_ENV"
+    return $ case env of
+        Nothing -> DEV
+        Just e -> read e :: AppEnv
+
 getAppEnv :: IO Env
 getAppEnv = do
+    env <- getRuntimeEnv
+    appLogger INFO $ "ENV: " ++ (show env)
     _ <- setEnvVars
     dbHost <- getEnv "POSTGRES_HOST"
-    print $ "POSTGRES_HOST: " ++ dbHost ++ "<-"
+    appLogger INFO $ "POSTGRES_HOST: " ++ dbHost ++ "<-"
     dbPort <- getEnv "POSTGRES_PORT"
-    print $ "POSTGRES_PORT: " ++  dbPort ++ "<-"
+    appLogger INFO $ "POSTGRES_PORT: " ++  dbPort ++ "<-"
     dbUser <- getEnv "POSTGRES_USER"
-    print $ "POSTGRES_USER: " ++  dbUser ++ "<-"
+    appLogger INFO $ "POSTGRES_USER: " ++  dbUser ++ "<-"
     dbPass <- getEnv "POSTGRES_PW"
-    print $ "POSTGRES_PW SIZE: " ++ show (take 4 dbPass)
+    appLogger INFO $ "POSTGRES_PW SIZE: " ++ show (take 4 dbPass)
     apiHost <- getEnv "GLD_API_HOST"
-    print $ "GLD_API_HOST: " ++  apiHost ++ "<-"
+    appLogger INFO $ "GLD_API_HOST: " ++  apiHost ++ "<-"
     apiKey <- getEnv "GLD_API_KEY"
-    print $ "GLD_API_KEY: " ++ show (take 4 apiKey)
+    appLogger INFO $ "GLD_API_KEY: " ++ show (take 4 apiKey)
     season <- getEnv "SEASON"
-    print $ "SEASON: " ++  season ++ "<-"
+    appLogger INFO $ "SEASON: " ++  season ++ "<-"
     emailHost <- getEnv "EMAIL_HOST"
-    print $ "EMAIL_HOST: " ++  emailHost ++ "<-"
+    appLogger INFO $ "EMAIL_HOST: " ++  emailHost ++ "<-"
     emailUsername <- getEnv "EMAIL_USERNAME"
-    print $ "EMAIL_USERNAME: " ++  emailUsername ++ "<-"
+    appLogger INFO $ "EMAIL_USERNAME: " ++  emailUsername ++ "<-"
     emailPassword <- getEnv "EMAIL_PASSWORD"
-    print $ "EMAIL_PASSWORD SIZE: " ++ show (take 4 emailPassword)
+    appLogger INFO $ "EMAIL_PASSWORD SIZE: " ++ show (take 4 emailPassword)
     conn <- R.connect dbHost (read dbPort) dbUser dbPass
     return Env 
         { conn = conn
