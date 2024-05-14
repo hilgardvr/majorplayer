@@ -5,7 +5,7 @@ connect-db-local:
 	psql -h localhost -p 5432 -U postgres 
 
 db-up:
-	docker start majorplayer-db --network majorplayer
+	docker start majorplayer-db 
 
 GIT_SHA := $(shell git log -1 --pretty=format:"%H")
 
