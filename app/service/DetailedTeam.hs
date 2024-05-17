@@ -79,6 +79,7 @@ detailedGolferToLeaderboardGolfer gf lbg =
         case LeaderboardGolfer.status lbg of
             "complete" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) pos (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg) (Golfer.captain gf)
             "active" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) pos (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg) (Golfer.captain gf)
+            "between rounds" -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) pos (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg) (Golfer.captain gf)
             _ -> TeamGolfer (Golfer.id gf) (Golfer.ranking gf) (Golfer.name gf) 100 (show $ LeaderboardGolfer.totalToPar lbg) (LeaderboardGolfer.status lbg) (LeaderboardGolfer.currentRound lbg) (LeaderboardGolfer.holesPlayed lbg) (Golfer.captain gf)
                 
 
