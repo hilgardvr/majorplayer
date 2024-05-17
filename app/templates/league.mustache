@@ -1,7 +1,8 @@
 <div>
     <p><b>{{fixture.name}} - {{fixture.course}} - {{fixture.prizeCurrency}} {{fixture.prize}}</b></p>
+    <!--hx-get="/league/{{leagueId}}"-->
     <button
-            hx-get="/league/{{leagueId}}"
+            hx-post="/league/refresh/{{leagueId}}"
             hx-target="#home"
             >Refresh Scores</button>
     {{#teams}}

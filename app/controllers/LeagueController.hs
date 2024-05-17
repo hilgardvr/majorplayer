@@ -17,7 +17,7 @@ import qualified Data.UUID as UUID
 import Golfer (Golfer)
 import Team (getTeamsForUsersAndFixture, getTeamForFixture)
 import DetailedTeam (buildTeamDetailsDTO, buildDummyTeamDetails)
-import DataClient (DataClientApi (getFixtureLeaderboard, getPrePostStartDate))
+import DataClient (DataClientApi (getFixtureLeaderboard, getPrePostStartDate, refreshLeaderboard))
 import qualified Fixture
 
 leagueRoutes :: DataClientApi a => Env -> [Golfer] -> a -> ScottyM ()
@@ -75,6 +75,28 @@ leagueRoutes env allGolfers client = do
                 let teamDetails = buildTeamDetailsDTO env teams users allGolfers leaderboard
                 t <- liftIO $ buildLeaguePartial env startedFixture teamDetails lid
                 html $ TL.fromStrict t
+
+    post "/league/refresh/:leagueId" $ do
+        c <- getCookie "majorplayer"
+        user <- liftIO $ getUserForSession env c
+        userId <- case user of
+            Nothing -> do
+                liftIO $ logger env ERROR "Could not find user to find league"
+                redirect "/"
+            Just u -> case User.id u of
+                Nothing -> do
+                    let msg = "Could not find userId"
+                    liftIO $ logger env ERROR msg
+                    error msg
+                Just uid -> return uid
+        lidStr <- captureParam "leagueId"
+        lid <- case UUID.fromString lidStr of
+                Nothing -> do
+                    liftIO $ logger env ERROR $ "Failed to parse uuid from string: " ++ lidStr
+                    error $ "Failed to parse uuid from string: " ++ lidStr
+                Just i -> do return i
+        _ <- liftIO $ refreshLeaderboard client
+        redirect $ TL.pack ("/league/" ++ UUID.toString lid)
 
     get "/league/detailed-team/:userId" $ do
         c <- getCookie "majorplayer"
