@@ -1,0 +1,13 @@
+services:
+  majorplayer-svc:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      GLD_API_KEY: ${GLD_API_KEY}
+      EMAIL_USERNAME: ${EMAIL_USERNAME}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+  majorplayer-db:
+    image: postgres:16.2-alpine3.19
+    environment: 
+      POSTGRES_PASSWORD: ${POSTGRES_PW}

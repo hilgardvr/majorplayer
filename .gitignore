@@ -1,3 +1,4 @@
 dist-newstyle
 env/dev-secret.env
 newdist
+.env
