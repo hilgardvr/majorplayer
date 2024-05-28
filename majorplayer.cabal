@@ -108,7 +108,7 @@ executable majorplayer
         , http-conduit == 2.3.8.3
         , aeson == 2.2.1.0
         , bytestring == 0.12.1.0
-        , smtp-mail == 0.4.0.0
+        , smtp-mail == 0.3.0.0
         , async == 2.2.5
         , cron == 0.7.1
 
