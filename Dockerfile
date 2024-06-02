@@ -6,8 +6,8 @@ RUN curl https://downloads.haskell.org/~ghcup/x86_64-linux-ghcup > /usr/bin/ghcu
 
 ARG GHC=9.4.8
 ARG CABAL=3.10.2.1
-RUN ghcup -v install ghc --isolate /usr/local --force ${GHC} && \
-    ghcup -v install cabal --isolate /usr/local/bin --force ${CABAL}
+RUN ghcup -v install ghc --isolate /usr/local --force 9.4.8 && \
+    ghcup -v install cabal --isolate /usr/local/bin --force 3.10.2.1
 
 WORKDIR /opt/majorplayer
 RUN cabal update
@@ -16,9 +16,7 @@ COPY ./majorplayer.cabal /opt/majorplayer/majorplayer.cabal
 RUN cabal build --only-dependencies
 
 COPY ./app /opt/majorplayer/app/
-COPY ./migrations /opt/majorplayer/migrations/
 COPY ./env /opt/majorplayer/env/
-RUN rm -f ./env/dev-secret.env
+COPY ./migrations/ /opt/majorplayer/migrations/
 RUN cabal build
-ENV MAJOR_PLAYER_ENV=PROD
 CMD ["cabal", "run"]
