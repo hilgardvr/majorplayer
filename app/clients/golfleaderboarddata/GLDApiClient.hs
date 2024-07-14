@@ -72,7 +72,7 @@ rawFixtureTable :: TableName
 rawFixtureTable = "fixtures"
 
 fixturesEndpoint :: Season -> EndPoint
-fixturesEndpoint s = "/fixtures/2/" ++ show s
+fixturesEndpoint s = "/fixtures/1/" ++ show s
 
 rawLeaderboardTable :: TableName
 rawLeaderboardTable = "leaderboard"
