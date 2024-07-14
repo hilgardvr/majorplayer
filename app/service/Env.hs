@@ -12,6 +12,7 @@ import System.Environment (getEnv, setEnv, lookupEnv)
 import Data.List (elemIndex)
 import qualified Repo as R (connect)
 import Data.Text (Text)
+import System.Directory (doesFileExist)
 
 data LogLevel = DEBUG | INFO | WARN | ERROR deriving (Show)
 
@@ -30,6 +31,9 @@ data Env = Env
     , emailUsername :: !String
     , emailPassword :: !String
     }
+
+envFile :: FilePath
+envFile = ".env"
 
 devEnvFile :: FilePath
 devEnvFile = "env/dev.env"
@@ -59,24 +63,13 @@ readAndSet fp = do
 
 setEnvVars :: IO ()
 setEnvVars = do
-    runTimeEnv <- getRuntimeEnv
-    case runTimeEnv of
-        DEV -> do
-            _ <- readAndSet devEnvFile
-            readAndSet devEnvSecretFile
-        PROD -> readAndSet prodEnvFile
-
-getRuntimeEnv :: IO AppEnv
-getRuntimeEnv = do
-    env <- lookupEnv "MAJOR_APP_ENV"
-    return $ case env of
-        Nothing -> DEV
-        Just e -> read e :: AppEnv
+    fx <- doesFileExist envFile
+    if fx
+    then readAndSet envFile
+    else return ()
 
 getAppEnv :: IO Env
 getAppEnv = do
-    env <- getRuntimeEnv
-    appLogger INFO $ "ENV: " ++ (show env)
     _ <- setEnvVars
     dbHost <- getEnv "POSTGRES_HOST"
     appLogger INFO $ "POSTGRES_HOST: " ++ dbHost ++ "<-"
