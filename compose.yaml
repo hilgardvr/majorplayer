@@ -1,13 +1,26 @@
 services:
   majorplayer-svc:
     build: .
+    depends_on:
+      majorplayer-db:
+        condition: service_started
     ports:
       - "3000:3000"
     environment:
+      MAJOR_APP_ENV: ${MAJOR_APP_ENV}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      GLD_API_HOST: ${GLD_API_HOST}
+      SEASON: ${SEASON}
+      EMAIL_HOST: ${EMAIL_HOST}
+      POSTGRES_PW: ${POSTGRES_PW}
       GLD_API_KEY: ${GLD_API_KEY}
       EMAIL_USERNAME: ${EMAIL_USERNAME}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
   majorplayer-db:
     image: postgres:16.2-alpine3.19
     environment: 
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PORT: ${POSTGRES_PORT}
       POSTGRES_PASSWORD: ${POSTGRES_PW}
